@@ -28,13 +28,15 @@ const SONGS = [
     suggestions: {
       4: {
         word: "何", pinyin: "hé", tone: 2,
+        becomes: { hanzi: "贺", pinyin: "hè", tone: 4, meaning: "to congratulate / celebrate" },
         alternates: [
-          { hanzi: "竟", pinyin: "jìng", tone: 4, reason: "Pairs with 然 (below) to form 竟然 (\"surprisingly, of all things\"). Its falling tone lands naturally on the melody's downward step, unlike 何's rising tone, which the same descending note flattens toward homophones like 河 (river) or 合 (to close/fit)." },
+          { hanzi: "竟", pinyin: "jìng", tone: 4, reason: "Pairs with 然 (below) to form 竟然 (\"surprisingly, of all things\"). Its falling tone lands naturally on the melody's downward step, unlike 何's rising tone, which the same descending note pulls toward hè — the tone of 贺 (\"congratulate\")." },
           { hanzi: "好", pinyin: "hǎo", tone: 3, reason: "Standalone alternative forming 好甜 (\"how sweet\"), an everyday exclamatory pattern in spoken Mandarin. Its dipping tone also sits comfortably on the melody's downward note." },
         ],
       },
       5: {
         word: "等", pinyin: "děng", tone: 3,
+        becomes: null,
         alternates: [
           { hanzi: "然", pinyin: "rán", tone: 2, reason: "Completes 竟然 (\"surprisingly\") when paired with 竟 above. Its rising tone rides naturally up with the melody's ascending note, unlike 等's dipping tone." },
           { hanzi: "极", pinyin: "jí", tone: 2, reason: "Standalone alternative meaning \"extremely\" (as in 甜极了, \"impossibly sweet\"). Also rises to match the melody's upward step." },
@@ -65,15 +67,17 @@ const SONGS = [
     suggestions: {
       1: {
         word: "安", pinyin: "ān", tone: 1,
+        becomes: { hanzi: "岸", pinyin: "àn", tone: 4, meaning: "shore / riverbank" },
         alternates: [
-          { hanzi: "静", pinyin: "jìng", tone: 4, reason: "Means \"calm, still\" — 平静夜 (\"calm night\") stays close to \"peaceful night.\" Its falling tone matches the melody's downward step, unlike 安's flat tone, which the same descending note can blur toward its exact tonal twin 岸 (àn, \"shore\")." },
+          { hanzi: "静", pinyin: "jìng", tone: 4, reason: "Means \"calm, still\" — 平静夜 (\"calm night\") stays close to \"peaceful night.\" Its falling tone matches the melody's downward step, unlike 安's flat tone, which the same descending note pulls toward its exact tonal twin 岸 (àn, \"shore\")." },
           { hanzi: "稳", pinyin: "wěn", tone: 3, reason: "Means \"stable, secure.\" Its dipping tone loosely fits the downward note as well, giving \"a settled, secure night\" as a secondary reading." },
         ],
       },
       4: {
         word: "善", pinyin: "shàn", tone: 4,
+        becomes: null,
         alternates: [
-          { hanzi: "良", pinyin: "liáng", tone: 2, reason: "Means \"good, fine\" (the second half of 善良 itself). Its rising tone matches the melody's upward step, unlike 善's falling tone, which the same rising note can blur toward its tonal twin 闪 (shǎn, \"to flash/dodge\") — trading \"holy goodness\" for something fleeting." },
+          { hanzi: "良", pinyin: "liáng", tone: 2, reason: "Means \"good, fine\" (the second half of 善良 itself). Its rising tone matches the melody's upward step, unlike 善's falling tone, which the same rising note pulls out of shape." },
           { hanzi: "纯", pinyin: "chún", tone: 2, reason: "Means \"pure.\" Also rises with the melody, giving \"holy-pure night\" as an alternate reading close to the original sense." },
         ],
       },
@@ -100,6 +104,7 @@ const SONGS = [
     suggestions: {
       1: {
         word: "真", pinyin: "zhēn", tone: 1,
+        becomes: null,
         alternates: [
           { hanzi: "诚", pinyin: "chéng", tone: 2, reason: "Means \"sincerely, truly\" (as in 诚然). Its rising tone matches the refrain's famous upward leap, unlike 真's flat tone, which the same rising note pulls out of shape." },
           { hanzi: "尤", pinyin: "yóu", tone: 2, reason: "Means \"especially, all the more.\" Also rises with the melody, giving \"you are all the more great\" as an intensified alternate reading." },

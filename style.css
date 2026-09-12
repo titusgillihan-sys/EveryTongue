@@ -150,8 +150,27 @@ header.hero .pitch {
 .cell .sub { display: block; font-size: 0.75rem; color: var(--sub); }
 .cell.flag { font-weight: 600; text-align: right; }
 
+.change-box {
+  margin: 4px 0 8px;
+  padding: 10px 14px;
+  background: var(--warn-bg);
+  border-left: 3px solid var(--mismatch);
+  border-radius: 0 8px 8px 0;
+  font-size: 0.94rem;
+  line-height: 1.5;
+}
+.change-box .change-label {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--warn-fg);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
 .suggestion-box {
-  margin: 4px 0 14px;
+  margin: 0 0 14px;
   padding: 12px 14px;
   background: var(--accent-soft);
   border-left: 3px solid var(--accent);

@@ -100,6 +100,27 @@ function renderAnalysisRows(container, analyzed, suggestions) {
 
     if (!n.unknown && !n.match && suggestions && suggestions[n.index]) {
       const suggestion = suggestions[n.index];
+      const glossPart = n.gloss ? ` ("${n.gloss}")` : "";
+
+      const changeBox = document.createElement("div");
+      changeBox.className = "change-box";
+      if (suggestion.becomes) {
+        const b = suggestion.becomes;
+        changeBox.innerHTML = `
+          <span class="change-label">What changes:</span>
+          Sung on this melody, <strong>${n.hanzi}</strong>${glossPart} is pulled toward the tone of
+          <strong>${b.hanzi}</strong> (${b.pinyin}, "${b.meaning}") instead.
+        `;
+      } else {
+        changeBox.innerHTML = `
+          <span class="change-label">What changes:</span>
+          Sung on this melody, <strong>${n.hanzi}</strong>${glossPart} doesn't land as any real
+          Mandarin word — its tone breaks apart, so the line just sounds wrong here rather than
+          becoming a specific different word.
+        `;
+      }
+      container.appendChild(changeBox);
+
       const box = document.createElement("div");
       box.className = "suggestion-box";
       box.innerHTML = `
