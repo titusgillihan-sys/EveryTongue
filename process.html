@@ -20,7 +20,7 @@
   <div class="wrap">
     <header class="hero small">
       <h1>How it works</h1>
-      <p class="pitch">Three plain-English ideas explain the whole tool.</p>
+      <p class="pitch">Four plain-English ideas explain the whole tool.</p>
     </header>
 
     <section class="card">
@@ -40,42 +40,78 @@
     </section>
 
     <section class="card">
-      <h2>2. A melody locks in a pitch, whether or not it fits</h2>
+      <h2>2. What breaks a sung line is contrary motion</h2>
       <p>
-        A song's tune assigns every syllable a fixed note. When a hymn is translated into Mandarin
-        but kept on its original Western melody, nobody adjusted the tune to fit the new words'
-        tones — so the melody can push a syllable's pitch the wrong direction. Each of the five
-        Mandarin tones implies where the pitch should go next relative to the previous note:
+        A tune assigns every syllable a fixed note. When a hymn is translated into Mandarin but kept
+        on its original Western melody, nobody adjusted the tune to fit the new words. The damage is
+        not done by any single note being "wrong" — it is done by the melody moving
+        <em>opposite</em> to the way the speaking voice moves between two syllables
+        (Ladd &amp; Kirby, 2020).
+      </p>
+      <p>
+        So the check is never "does this tone match this note." It is always about the
+        <strong>transition between two neighbouring syllables</strong>: where the previous tone ends,
+        where this one begins, and whether the tune goes with that movement or against it.
       </p>
       <table class="tone-table">
-        <thead><tr><th>Tone</th><th>Shape</th><th>Melody should move</th></tr></thead>
+        <thead><tr><th>Tone</th><th>Shape</th><th>Starts / ends</th></tr></thead>
         <tbody>
-          <tr><td>1st</td><td>flat / high</td><td>same</td></tr>
-          <tr><td>2nd</td><td>rising</td><td>up</td></tr>
-          <tr><td>3rd</td><td>dipping / low</td><td>down</td></tr>
-          <tr><td>4th</td><td>falling</td><td>down</td></tr>
-          <tr><td>neutral</td><td>—</td><td>flexible, always OK</td></tr>
+          <tr><td>1st</td><td>flat / high</td><td>high → high</td></tr>
+          <tr><td>2nd</td><td>rising</td><td>mid → high</td></tr>
+          <tr><td>3rd</td><td>dipping / low</td><td>low → lowest</td></tr>
+          <tr><td>4th</td><td>falling</td><td>high → lowest</td></tr>
+          <tr><td>neutral</td><td>—</td><td>takes its pitch from context; never flagged</td></tr>
         </tbody>
       </table>
       <p>
-        When a melody note moves the wrong way for a syllable's tone, that's a mismatch — and
-        depending on the word, it can either blur into a different real word, or just stop sounding
-        like a real word at all.
+        A 4th tone ends at the bottom of the range; a following 4th tone starts back at the top. The
+        voice therefore leaps <em>up</em> between them. If the melody descends across that pair, tune
+        and language are pulling in opposite directions — that is a flag. If both move the same way,
+        or either is flat, there is no conflict, whatever the individual tones happen to be.
+      </p>
+      <p>
+        Two details matter for getting this right. The first syllable of a line has nothing before it,
+        so it can never be flagged. And a 3rd tone before another 3rd tone is <em>spoken</em> as a
+        rising 2nd tone — 你好 is written nǐ hǎo and said ní hǎo — so the analysis runs on the tone
+        actually sung, not the one the dictionary lists.
       </p>
     </section>
 
     <section class="card">
-      <h2>3. The check itself is simple and see-through — not AI, not a black box</h2>
+      <h2>3. Meaning is a separate gate, not part of the score</h2>
       <p>
-        Every syllable's tone comes from a small pinyin/tone dictionary (formatted the way the
-        public CC-CEDICT dataset records it). The melody is a plain list of "up / down / same"
-        steps. Comparing the two is one lookup and one equality check — the same logic runs
-        identically on every page of this site, so nothing is hidden or hand-waved.
+        Once a clash is found, the obvious move is to swap in a word that sings better. The obvious
+        move is also how you quietly destroy a translation: it is always possible to improve a
+        singability score by saying something else.
       </p>
       <p>
-        AI only enters at the very last step: once a mismatch is found, it's used to suggest 2–3
-        alternate Mandarin words that keep the original meaning while fitting the tone the melody
-        actually needs.
+        So meaning is a <strong>gate, not a tiebreaker</strong>. Every candidate replacement carries a
+        meaning distance (0 = interchangeable, 1 = a nuance shift, 2 = a different claim). Anything
+        over the budget is removed <em>before</em> ranking begins, and ranking only ever orders what
+        survived. A candidate can never buy its way past the gate by scoring well.
+      </p>
+      <p>
+        Set phrases are gated structurally too. 恩典 ("grace") is one word, so swapping a single
+        syllable of it produces gibberish rather than a synonym — the tool refuses to offer one and
+        says so, instead of inventing a plausible-looking replacement.
+      </p>
+      <p>
+        When nothing survives the gate, the honest answer is that the words cannot be fixed — and the
+        tool offers the alternative that costs no meaning at all: move the note instead.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>4. The check itself is see-through — not a black box</h2>
+      <p>
+        Tones come from a small pinyin/tone dictionary (formatted the way the public CC-CEDICT dataset
+        records it). The melody is a plain list of "up / down / same" steps. Comparing them is
+        arithmetic on two numbers, and the same function runs on every page of this site, so nothing
+        is hidden or hand-waved. Characters outside the dictionary are marked unknown, never guessed.
+      </p>
+      <p>
+        Candidate replacements are generated from an inspectable substitution lexicon and ranked by
+        how much they reduce the line's total contrary motion. No model is called at any point.
       </p>
     </section>
 

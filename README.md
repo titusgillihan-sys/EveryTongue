@@ -2,117 +2,110 @@
 
 **The problem:** in most of the world's languages, pitch is part of the word. When churches sing
 translated Western hymns, the melody overrides the words, so the lyrics stop meaning what the
-translator intended. This tool takes an existing song and a target language and finds the
-translation that is both faithful and singable against that exact melody, then shows you the
-difference.
+translator intended. This tool takes an existing hymn line and a melody shape, finds every place the
+tune fights the language, and proposes fixes that are ranked for singability *without* being allowed
+to quietly change what the line says.
 
-This MVP is scoped to **Mandarin Chinese**. It's a static, no-login, no-database site built to be
-understood in about 15 seconds, with three pages:
+Scoped to **Mandarin Chinese**. Static, no login, no database, no build step.
 
-- **Home** (`index.html`) — the golden-path example ("Amazing Grace"), front and center.
-- **Library** (`library.html` → `song.html?id=...`) — two more pre-analyzed hymn lines to browse.
-- **Analyze your own** (`upload.html`) — paste a Mandarin line, pick or hand-build a melody shape,
-  and see it flagged live against a small starter tone dictionary.
+- **Home** (`index.html`) — the golden-path example ("Amazing Grace").
+- **How it works** (`process.html`) — the methodology in plain English.
+- **Library** (`library.html` → `song.html?id=...`) — pre-analyzed hymn lines.
+- **Analyze your own** (`upload.html`) — paste a line, shape a melody, get ranked fixes live.
 
-## What it shows
+## What the check actually measures
 
-1. The original English line, and its existing (commonly used) Mandarin translation.
-2. A syllable-by-syllable breakdown: the Mandarin word, its tone, the melody's pitch direction at
-   that note, and whether they match — flagged with ✅ or ⚠️.
-3. For each ⚠️ mismatch, an AI-style suggested alternate word/phrase that keeps the meaning close
-   while fitting the melody's direction better.
-4. A before/after pitch-contour comparison (colored markers: green = tone matches the melody,
-   red = mismatch), plus optional audio: spoken Mandarin (Web Speech API) and a "melody as beeps"
-   playback (Web Audio API) so you can hear the shape of the tune independent of the words.
+Not "does this tone match this note." Sung intelligibility depends mainly on avoiding **contrary
+motion** (Ladd & Kirby 2020): the melody moving *opposite* to the way the speaking voice moves
+between two adjacent syllables.
 
-## How the matching logic works (rules-based, not ML)
+So every judgement is about a **transition**. Each tone is stored as Chao tone letters — where it
+starts and ends on a 1-5 pitch scale:
 
-Each Mandarin syllable's tone implies an expected melodic direction relative to the previous note:
+| Tone | Shape | Starts → ends |
+|------|---------------|----------------|
+| 1    | flat / high   | high → high    |
+| 2    | rising        | mid → high     |
+| 3    | dipping / low | low → lowest   |
+| 4    | falling       | high → lowest  |
+| 5    | neutral       | no inherent shape; never flagged |
 
-| Tone | Description   | Expected melody direction |
-|------|---------------|----------------------------|
-| 1    | flat / high   | same                        |
-| 2    | rising        | up                          |
-| 3    | dipping / low | down (loose match)          |
-| 4    | falling       | down                        |
-| 5    | neutral       | flexible — always matches   |
+The voice's movement into a syllable is *where the previous tone ended* versus *where this one
+starts*. If the melody moves the opposite way, that is a flag, with a severity of 1-4. If both move
+the same way, or either is flat, there is no conflict — regardless of the individual tones.
 
-Melodies are hand-encoded (see `songs.js`) as arrays of relative pitches with an "up / down / same"
-direction for each note versus the previous one — no audio analysis or MIDI parsing anywhere in
-this app, by design (see "What this deliberately does NOT do" below). The comparison itself is a
-plain lookup + equality check (`toneMatchesMelody` in `shared.js`), used identically by all three
-pages, so the logic is fully inspectable and consistent everywhere.
+Two details matter. The first syllable of a line has nothing before it and can never be flagged. And
+third-tone sandhi is applied before scoring: 你好 is written nǐ hǎo but spoken ní hǎo, so scoring the
+written tone would flag the wrong syllable.
 
-## "Upload a song" — what it actually accepts, and why
+The whole language model is `CHAO_TONES` in `shared.js`. Changing languages means replacing that
+table and the sandhi rule.
 
-The Analyze page takes a **pasted Mandarin lyric line**, not an audio or MIDI file. You pick a
-melody shape from a few presets (rising, falling, wave, flat, or the "Amazing Grace" contour) and
-can then hand-tune any individual note's direction by clicking it. This was a deliberate scope
-call: real audio-to-pitch extraction is a hard, error-prone signal-processing/ML problem, and the
-original build spec explicitly called for avoiding it in this MVP. Structured melody input keeps
-the demo reliable for a live audience while still feeling interactive.
+## Meaning is a gate, not a tiebreaker
 
-Tone lookups on this page come from `tone-dictionary.js`, a curated ~150-character starter
-dictionary (worship-song vocabulary + common function words), formatted the way CC-CEDICT records
-pinyin/tone data. Characters outside that list are marked "tone unknown" rather than guessed —
-never silently wrong.
+It is always possible to improve a singability score by saying something else. So candidate
+replacements carry a **meaning distance** — 0 interchangeable, 1 a nuance shift, 2 a different claim
+— and anything over the budget is removed *before* ranking begins. Ranking only ever orders what
+survived. A candidate cannot buy its way past the gate by scoring well.
+
+Set phrases are gated structurally too: swapping one syllable of 恩典 ("grace") produces gibberish,
+not a synonym, so `LOCKED_COMPOUNDS` refuses rather than inventing something plausible-looking.
+
+When nothing survives the gate, the tool says so and offers the fix that costs no meaning at all:
+move that one note instead.
+
+Everything is rules-based and inspectable. No model is called at any point.
 
 ## Files
 
-- `index.html`, `library.html`, `song.html`, `upload.html` — the four pages.
-- `style.css` — shared styling and design tokens for all pages.
-- `shared.js` — the rules engine (tone/direction matching), row/contour rendering, and audio
-  helpers used by every page.
-- `songs.js` — the library: three pre-analyzed songs (lyrics, tones, melody directions, and
-  pre-computed suggestion text for each flagged mismatch). Add a song here to add it to the library.
-- `tone-dictionary.js` — the curated pinyin/tone lookup used by the Analyze page.
-- `api/suggest.js` — **optional** serverless function (Vercel/Netlify-style) that proxies to the
-  real Claude API server-side, for live-generating suggestions (used by both the home page's
-  "Regenerate suggestions" button and the Analyze page's "Get AI suggestions" button). Not required
-  for the site to work — every page has a graceful pre-computed or "not yet configured" fallback.
-- `.github/workflows/deploy-pages.yml` — auto-deploys the static site to GitHub Pages on push.
+- `index.html`, `process.html`, `library.html`, `song.html`, `upload.html` — the five pages.
+- `style.css` — shared styling and design tokens.
+- `shared.js` — tone model, sandhi, the contrary-motion scorer, rendering, audio helpers.
+- `tone-dictionary.js` — curated ~150-character pinyin/tone lookup. Unknown characters are marked
+  "tone unknown", never guessed.
+- `candidates.js` — candidate generation, the meaning gate, locked compounds, ranking.
+- `songs.js` — library **source data only**. Suggestions and "after" lines are generated at render
+  time so they can never drift out of sync with the scorer.
+- `api/suggest.js` — legacy optional serverless function, currently unreferenced by any page. Either
+  wire it up or delete it; see FINDINGS.md.
+- `FINDINGS.md` — what was wrong before, with the measurements.
+- `CLAUDE.md` — working agreement for both developers and both agents. Read it first.
 
 ## Running locally
 
-No build step — just open `index.html` in a browser, or serve the folder:
+No build step:
 
 ```bash
 python3 -m http.server 8080
-# then visit http://localhost:8080
 ```
+
+Then visit http://localhost:8080.
+
+Use this to preview work on a feature branch. The Pages workflow deliberately deploys only the
+integration branch — adding feature branches to it would let one person's branch overwrite the live
+site, since the deploy uses a single `pages` concurrency group.
 
 ## Deploying
 
-**GitHub Pages (recommended, fully static, matches the MVP scope):**
+GitHub Pages via the included workflow. In the repo, set **Settings → Pages → Source** to "GitHub
+Actions". (The deploy is currently failing; this setting is the most likely cause.)
 
-1. Push this repo to GitHub.
-2. In the repo, go to **Settings → Pages** and set **Source** to "GitHub Actions" (the included
-   workflow at `.github/workflows/deploy-pages.yml` will build and deploy on every push).
-3. Your site will be live at `https://<username>.github.io/<repo>/`.
+## Caveats that matter
 
-**Optional: live Claude API suggestions.** The static site works fully without this — the home and
-library pages show pre-computed suggestions from `songs.js`, and the Analyze page shows an honest
-"no suggestion yet" note. If you want the "Get AI suggestions" / "Regenerate suggestions" buttons
-to actually call Claude, deploy `api/suggest.js` on a platform that runs Node serverless functions
-(e.g. Vercel) with an `ANTHROPIC_API_KEY` environment variable set. The key never reaches the
-browser — it's only read server-side inside that function.
+**Nothing here is native-speaker verified.** Tones and vocabulary are standard Mandarin, but the
+melody contours are hand-encoded approximations, and the substitution lexicon's glosses and meaning
+distances are hand-entered from dictionary senses. Before presenting any specific clash as a real
+case — in a pitch, a video, or to judges who know Mandarin — have a fluent speaker confirm that the
+flagged clash is real and audible. Each song is one entry in one array so it can be swapped for a
+verified example without touching app logic.
 
-## An important caveat on the demo data
-
-The build spec behind this project calls for locking each "golden path" example — the specific
-line, translation, and melody clash — only after a native Mandarin speaker has verified that the
-flagged mismatch is real and audible. This repo ships with three fully worked, internally-consistent
-examples using standard Mandarin pinyin/tones (following the CC-CEDICT convention) and hand-encoded
-approximations of each tune's contour, so the whole pipeline can be demoed end-to-end today. Before
-presenting any of them as a verified real-world case (e.g. in a pitch or a demo to judges who know
-Mandarin), have a fluent speaker sanity-check the specific mismatches called out in `songs.js` —
-each song is one entry in one array, specifically so it can be swapped for a verified example
-without touching any app logic.
+**Copyright.** Only public-domain hymn text may be committed. A public-domain *tune* is not
+sufficient — the words are what gets committed. "How Great Thou Art" was removed for this reason.
 
 ## What this deliberately does NOT do
 
 - No multi-language support — Mandarin only.
-- No general songwriting/composition tooling.
-- No audio analysis or automatic melody extraction from real audio/MIDI files — melody input is
-  always structured (presets + manual up/down/same editing), never inferred from a file.
-- No user accounts, database, or persistence — it's a demo, not a product.
+- No general songwriting or composition tooling. Suggesting that a note move is advice to the user,
+  never a rewrite of the tune.
+- No audio analysis or melody extraction from audio/MIDI — melody input is always structured.
+- No user accounts, database, or persistence.

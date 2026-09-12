@@ -448,3 +448,89 @@ input[type="text"], select {
   border-bottom: 1px solid var(--line);
 }
 .tone-table th { color: var(--sub); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; }
+
+/* ---- Candidate ranking, meaning gate, melody alternative ---- */
+
+.candidate-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+.candidate-list li {
+  margin-bottom: 0.75rem;
+}
+.cand-word {
+  font-size: 1.05rem;
+}
+.cand-word .sub {
+  font-size: 0.85rem;
+}
+.cand-badges {
+  display: inline-flex;
+  gap: 0.4rem;
+  margin-left: 0.5rem;
+  flex-wrap: wrap;
+  vertical-align: middle;
+}
+.badge {
+  display: inline-block;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.badge-clear {
+  background: var(--ok-bg);
+  color: var(--ok-fg);
+}
+.badge-partial {
+  background: #fdf4e3;
+  color: #8a6316;
+}
+.badge-meaning {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.gate-box,
+.melody-fix-box {
+  margin: 0.5rem 0 1rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.gate-box {
+  background: #f6f2ec;
+  border-left: 3px solid var(--line);
+  color: var(--sub);
+}
+.melody-fix-box {
+  background: var(--ok-bg);
+  border-left: 3px solid var(--ok-fg);
+  color: #1f4f30;
+}
+
+.tension-readout {
+  margin: 0.75rem 0;
+  padding: 0.7rem 0.9rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.hanzi-inline {
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+}
+
+.field-label.inline {
+  display: inline-block;
+  margin: 0 0.4rem 0 0;
+}
+
+.row .cell.direction {
+  line-height: 1.45;
+}
