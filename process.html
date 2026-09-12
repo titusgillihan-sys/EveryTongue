@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Every Tongue — how it works</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav class="topnav">
+    <a class="brand" href="index.html">Every Tongue</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="process.html" class="active">How it works</a>
+      <a href="library.html">Library</a>
+      <a href="upload.html">Analyze your own</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <header class="hero small">
+      <h1>How it works</h1>
+      <p class="pitch">Three plain-English ideas explain the whole tool.</p>
+    </header>
+
+    <section class="card">
+      <h2>1. In Mandarin, pitch is part of the word</h2>
+      <p>
+        In English, you can say a word high, low, rising, or flat, and it's still the same word —
+        you've just changed your tone of voice. Mandarin doesn't work that way: the pitch pattern
+        of a syllable <em>is</em> part of the word. The classic example:
+      </p>
+      <div class="tone-demo">
+        <div class="tone-demo-item"><span class="hanzi">妈</span><span class="pinyin">mā</span><span class="tone-num">1st — flat</span><span class="meaning">mother</span></div>
+        <div class="tone-demo-item"><span class="hanzi">麻</span><span class="pinyin">má</span><span class="tone-num">2nd — rising</span><span class="meaning">hemp</span></div>
+        <div class="tone-demo-item"><span class="hanzi">马</span><span class="pinyin">mǎ</span><span class="tone-num">3rd — dipping</span><span class="meaning">horse</span></div>
+        <div class="tone-demo-item"><span class="hanzi">骂</span><span class="pinyin">mà</span><span class="tone-num">4th — falling</span><span class="meaning">to scold</span></div>
+      </div>
+      <p>Same sound, four different pitches, four unrelated words.</p>
+    </section>
+
+    <section class="card">
+      <h2>2. A melody locks in a pitch, whether or not it fits</h2>
+      <p>
+        A song's tune assigns every syllable a fixed note. When a hymn is translated into Mandarin
+        but kept on its original Western melody, nobody adjusted the tune to fit the new words'
+        tones — so the melody can push a syllable's pitch the wrong direction. Each of the five
+        Mandarin tones implies where the pitch should go next relative to the previous note:
+      </p>
+      <table class="tone-table">
+        <thead><tr><th>Tone</th><th>Shape</th><th>Melody should move</th></tr></thead>
+        <tbody>
+          <tr><td>1st</td><td>flat / high</td><td>same</td></tr>
+          <tr><td>2nd</td><td>rising</td><td>up</td></tr>
+          <tr><td>3rd</td><td>dipping / low</td><td>down</td></tr>
+          <tr><td>4th</td><td>falling</td><td>down</td></tr>
+          <tr><td>neutral</td><td>—</td><td>flexible, always OK</td></tr>
+        </tbody>
+      </table>
+      <p>
+        When a melody note moves the wrong way for a syllable's tone, that's a mismatch — and
+        depending on the word, it can either blur into a different real word, or just stop sounding
+        like a real word at all.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>3. The check itself is simple and see-through — not AI, not a black box</h2>
+      <p>
+        Every syllable's tone comes from a small pinyin/tone dictionary (formatted the way the
+        public CC-CEDICT dataset records it). The melody is a plain list of "up / down / same"
+        steps. Comparing the two is one lookup and one equality check — the same logic runs
+        identically on every page of this site, so nothing is hidden or hand-waved.
+      </p>
+      <p>
+        AI only enters at the very last step: once a mismatch is found, it's used to suggest 2–3
+        alternate Mandarin words that keep the original meaning while fitting the tone the melody
+        actually needs.
+      </p>
+    </section>
+
+    <section class="card cta-row">
+      <a class="cta-card" href="library.html">
+        <h3>See it applied →</h3>
+        <p>Browse hymn lines already checked, with the full syllable-by-syllable breakdown.</p>
+      </a>
+      <a class="cta-card" href="upload.html">
+        <h3>Try your own line →</h3>
+        <p>Paste a Mandarin lyric, pick a melody shape, and see it checked live.</p>
+      </a>
+    </section>
+
+    <footer class="note">
+      One honest caveat: the specific melody contours and flagged mismatches on this site are
+      hand-built, internally-consistent examples using standard Mandarin tones — not yet confirmed
+      against sheet music and a native speaker's ear. See the README for details.
+    </footer>
+  </div>
+</body>
+</html>

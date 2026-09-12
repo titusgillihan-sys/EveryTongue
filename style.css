@@ -236,7 +236,7 @@ footer.note {
 /* CTA cards on the home page */
 .cta-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 14px;
 }
 @media (max-width: 620px) {
@@ -348,3 +348,85 @@ input[type="text"], select {
 .live-suggestion-list li { margin-bottom: 6px; }
 
 .row.unknown { background: #f2efe9; }
+
+/* Home page: single example teaser */
+.example-teaser {
+  text-align: center;
+}
+.example-teaser-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sub);
+  margin-bottom: 8px;
+}
+.example-teaser-song {
+  font-size: 0.95rem;
+  color: var(--sub);
+  margin-bottom: 4px;
+}
+.example-teaser-line {
+  font-size: 1.5rem;
+  margin-bottom: 18px;
+}
+.example-teaser-swap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 1.15rem;
+  margin-bottom: 16px;
+}
+.example-teaser-swap .swap-from,
+.example-teaser-swap .swap-to {
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+.example-teaser-swap .swap-from { background: var(--ok-bg); color: var(--ok-fg); }
+.example-teaser-swap .swap-to { background: var(--warn-bg); color: var(--warn-fg); }
+.example-teaser-swap em { font-style: normal; font-weight: 400; opacity: 0.8; font-size: 0.85em; display: block; }
+.example-teaser-swap .swap-arrow { font-size: 0.82rem; color: var(--sub); }
+.teaser-link {
+  display: inline-block;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.teaser-link:hover { text-decoration: underline; }
+
+/* Process page: tone demo + table */
+.tone-demo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+.tone-demo-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 14px 8px;
+  background: var(--accent-soft);
+  border-radius: 10px;
+}
+.tone-demo-item .hanzi { font-size: 1.8rem; }
+.tone-demo-item .pinyin { font-size: 1rem; color: var(--accent); font-weight: 600; }
+.tone-demo-item .tone-num { font-size: 0.75rem; color: var(--sub); }
+.tone-demo-item .meaning { font-size: 0.85rem; font-style: italic; }
+
+.tone-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 0.92rem;
+}
+.tone-table th, .tone-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.tone-table th { color: var(--sub); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; }

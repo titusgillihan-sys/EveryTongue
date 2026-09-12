@@ -11,6 +11,7 @@
     <a class="brand" href="index.html">Every Tongue</a>
     <div class="nav-links">
       <a href="index.html" class="active">Home</a>
+      <a href="process.html">How it works</a>
       <a href="library.html">Library</a>
       <a href="upload.html">Analyze your own</a>
     </div>
@@ -18,155 +19,45 @@
 
   <div class="wrap">
     <header class="hero">
-      <h1>What we're checking, in plain English</h1>
+      <h1>Every Tongue</h1>
       <p class="pitch">
-        In English, you can say a word high, low, rising, or flat, and it's still the same word —
-        you've just changed your tone of voice. <strong>Mandarin Chinese doesn't work that way.</strong>
-        The pitch you use on a syllable isn't tone of voice — it's part of the word itself. Say "ma"
-        with a rising pitch and it means "hemp." Say it with a falling pitch and it means "scold."
-        Same sound, different pitch, completely different word.
-      </p>
-      <p class="pitch">
-        That's a problem for singing. A song's melody locks every syllable to a fixed note, whether
-        or not that note matches the word's real pitch. So when a hymn gets translated into
-        Mandarin but kept on its original Western tune, the melody can push a word's pitch the
-        wrong way — and the lyric quietly turns into a different word than the translator meant.
-      </p>
-      <p class="pitch">
-        <strong>This tool finds exactly where that happens.</strong> Below, a real hymn line is
-        checked syllable by syllable against its melody. Where the tune and the tone disagree, it
-        shows you the word that's supposed to be there, the word the melody accidentally creates
-        instead, and a fix that keeps both the meaning and the tune.
+        In Mandarin, the pitch of a word isn't just tone of voice — it's part of the word's
+        meaning. When a hymn's melody doesn't match those pitches, the lyrics can quietly turn
+        into different words. Every Tongue finds exactly where that happens, and suggests a fix.
       </p>
     </header>
 
-    <section class="card given-lines">
-      <h2 id="tune-name"></h2>
-      <div class="line-pair">
-        <span class="label">Original English line</span>
-        <span class="value" id="english-line"></span>
-        <span class="pinyin" id="english-gloss"></span>
+    <section class="card example-teaser">
+      <div class="example-teaser-label">One example</div>
+      <div class="example-teaser-song">"Amazing Grace," sung in Mandarin</div>
+      <div class="example-teaser-line">奇异恩典，何等甘甜</div>
+      <div class="example-teaser-swap">
+        <span class="swap-from">何 <em>"how"</em></span>
+        <span class="swap-arrow">→ sung on this melody →</span>
+        <span class="swap-to">贺 <em>"congratulate"</em></span>
       </div>
-      <div class="line-pair">
-        <span class="label">Current Mandarin translation</span>
-        <span class="value" id="mandarin-line"></span>
-        <span class="pinyin" id="mandarin-pinyin"></span>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>Tone vs. melody analysis</h2>
-      <div id="summary-banner" class="summary"></div>
-      <div class="legend">
-        For each syllable: its Mandarin tone, the melody's pitch direction at that note
-        (relative to the previous note), and whether they line up. ⚠️ mismatches show exactly
-        what the melody changes that syllable into, plus an AI-suggested fix below it.
-      </div>
-      <div id="analysis-rows"></div>
-    </section>
-
-    <section class="card">
-      <h2>Before / after</h2>
-      <div class="before-after">
-        <div class="ba-col">
-          <h3>Before (current translation)</h3>
-          <div id="contour-before"></div>
-          <div class="line-text" id="before-line"></div>
-        </div>
-        <div class="ba-col">
-          <h3>After (tone-corrected)</h3>
-          <div id="contour-after"></div>
-          <div class="line-text" id="after-line"></div>
-          <div class="line-gloss" id="after-gloss"></div>
-        </div>
-      </div>
-      <div class="controls">
-        <button id="play-melody">▶ Play melody (tones as beeps)</button>
-        <button class="secondary" id="speak-before">🔊 Speak "before" line</button>
-        <button class="secondary" id="speak-after">🔊 Speak "after" line</button>
-      </div>
-      <div class="controls">
-        <button class="secondary" id="live-ai-button">↻ Regenerate suggestions with live Claude API</button>
-      </div>
-      <div id="live-ai-status"></div>
+      <a class="teaser-link" href="song.html?id=amazing-grace">See the full breakdown →</a>
     </section>
 
     <section class="card cta-row">
+      <a class="cta-card" href="process.html">
+        <h3>How it works →</h3>
+        <p>The three-part idea behind the check, in plain English.</p>
+      </a>
       <a class="cta-card" href="library.html">
         <h3>Browse the library →</h3>
-        <p>See two more hymn lines already checked for tone/melody mismatches.</p>
+        <p>See hymn lines already checked for tone/melody mismatches.</p>
       </a>
       <a class="cta-card" href="upload.html">
         <h3>Analyze your own line →</h3>
-        <p>Paste a Mandarin lyric line, pick a melody shape, and see it flagged live.</p>
+        <p>Paste a Mandarin lyric line and see it checked live.</p>
       </a>
     </section>
 
     <footer class="note">
-      Green markers = tone matches the melody's direction. Red markers = mismatch.
-      MVP scope: Mandarin Chinese only. Tone data follows the CC-CEDICT pinyin/tone convention;
-      this specific example is illustrative and, per the project's own build spec, should be
-      checked against sheet music and a native Mandarin speaker before being presented as a
-      verified real-world case.
+      MVP scope: Mandarin Chinese only. See <a href="process.html">How it works</a> for the
+      methodology and a verification caveat on the demo data.
     </footer>
   </div>
-
-  <script src="songs.js"></script>
-  <script src="shared.js"></script>
-  <script>
-    function renderMeta(song) {
-      document.getElementById("english-line").textContent = song.englishLine;
-      document.getElementById("english-gloss").textContent = song.englishGloss;
-      document.getElementById("mandarin-line").textContent = song.mandarinLine;
-      document.getElementById("mandarin-pinyin").textContent = song.mandarinPinyinLine;
-      document.getElementById("tune-name").textContent = `${song.title} — tune: ${song.tuneName}`;
-    }
-
-    function renderContours(song, analyzed) {
-      document.getElementById("contour-before").innerHTML = buildContourSVG(analyzed, false, song.suggestions);
-      document.getElementById("contour-after").innerHTML = buildContourSVG(analyzed, true, song.suggestions);
-      document.getElementById("before-line").textContent = `${song.mandarinLine} (${song.mandarinPinyinLine})`;
-      document.getElementById("after-line").textContent = `${song.correctedLine} (${song.correctedPinyinLine})`;
-      document.getElementById("after-gloss").textContent = song.correctedGloss;
-    }
-
-    async function regenerateWithLiveAI(song) {
-      const status = document.getElementById("live-ai-status");
-      status.textContent = "Contacting Claude API…";
-      try {
-        const res = await fetch("/api/suggest", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ song }),
-        });
-        if (!res.ok) throw new Error("no server function available");
-        const data = await res.json();
-        status.textContent = "Live suggestions received (see console).";
-        console.log("Live AI suggestions:", data);
-      } catch (err) {
-        status.textContent =
-          "Live AI regeneration needs the included /api/suggest function deployed with an Anthropic API key (see README). Showing the pre-computed suggestions above instead.";
-      }
-    }
-
-    function init() {
-      const song = getSongById("amazing-grace");
-      renderMeta(song);
-      const analyzed = analyzeNotes(song.notes);
-      const summary = summaryText(analyzed);
-      const banner = document.getElementById("summary-banner");
-      banner.textContent = summary.text;
-      banner.className = `summary ${summary.cls}`;
-      renderAnalysisRows(document.getElementById("analysis-rows"), analyzed, song.suggestions);
-      renderContours(song, analyzed);
-
-      document.getElementById("speak-before").addEventListener("click", () => speakMandarin(song.mandarinLine));
-      document.getElementById("speak-after").addEventListener("click", () => speakMandarin(song.correctedLine));
-      document.getElementById("play-melody").addEventListener("click", () => playMelodyBeeps(song.notes));
-      document.getElementById("live-ai-button").addEventListener("click", () => regenerateWithLiveAI(song));
-    }
-
-    document.addEventListener("DOMContentLoaded", init);
-  </script>
 </body>
 </html>
