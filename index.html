@@ -7,9 +7,18 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <nav class="topnav">
+    <a class="brand" href="index.html">Every Tongue</a>
+    <div class="nav-links">
+      <a href="index.html" class="active">Home</a>
+      <a href="library.html">Library</a>
+      <a href="upload.html">Analyze your own</a>
+    </div>
+  </nav>
+
   <div class="wrap">
     <header class="hero">
-      <h1>Every Tongue</h1>
+      <h1>When the tune fights the tone</h1>
       <p class="pitch">
         In most of the world's languages, pitch is part of the word. When churches sing translated
         Western hymns, the melody overrides the words, and the lyrics stop meaning what the
@@ -70,16 +79,82 @@
       <div id="live-ai-status"></div>
     </section>
 
+    <section class="card cta-row">
+      <a class="cta-card" href="library.html">
+        <h3>Browse the library →</h3>
+        <p>See two more hymn lines already checked for tone/melody mismatches.</p>
+      </a>
+      <a class="cta-card" href="upload.html">
+        <h3>Analyze your own line →</h3>
+        <p>Paste a Mandarin lyric line, pick a melody shape, and see it flagged live.</p>
+      </a>
+    </section>
+
     <footer class="note">
       Green markers = tone matches the melody's direction. Red markers = mismatch.
-      MVP scope: Mandarin Chinese only, one demo song ("Amazing Grace"). Tone data follows the
-      CC-CEDICT pinyin/tone convention; this specific example is illustrative and, per the
-      project's own build spec, should be checked against sheet music and a native Mandarin
-      speaker before being presented as a verified real-world case.
+      MVP scope: Mandarin Chinese only. Tone data follows the CC-CEDICT pinyin/tone convention;
+      this specific example is illustrative and, per the project's own build spec, should be
+      checked against sheet music and a native Mandarin speaker before being presented as a
+      verified real-world case.
     </footer>
   </div>
 
-  <script src="data.js"></script>
-  <script src="app.js"></script>
+  <script src="songs.js"></script>
+  <script src="shared.js"></script>
+  <script>
+    function renderMeta(song) {
+      document.getElementById("english-line").textContent = song.englishLine;
+      document.getElementById("english-gloss").textContent = song.englishGloss;
+      document.getElementById("mandarin-line").textContent = song.mandarinLine;
+      document.getElementById("mandarin-pinyin").textContent = song.mandarinPinyinLine;
+      document.getElementById("tune-name").textContent = `${song.title} — tune: ${song.tuneName}`;
+    }
+
+    function renderContours(song, analyzed) {
+      document.getElementById("contour-before").innerHTML = buildContourSVG(analyzed, false, song.suggestions);
+      document.getElementById("contour-after").innerHTML = buildContourSVG(analyzed, true, song.suggestions);
+      document.getElementById("before-line").textContent = `${song.mandarinLine} (${song.mandarinPinyinLine})`;
+      document.getElementById("after-line").textContent = `${song.correctedLine} (${song.correctedPinyinLine})`;
+      document.getElementById("after-gloss").textContent = song.correctedGloss;
+    }
+
+    async function regenerateWithLiveAI(song) {
+      const status = document.getElementById("live-ai-status");
+      status.textContent = "Contacting Claude API…";
+      try {
+        const res = await fetch("/api/suggest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ song }),
+        });
+        if (!res.ok) throw new Error("no server function available");
+        const data = await res.json();
+        status.textContent = "Live suggestions received (see console).";
+        console.log("Live AI suggestions:", data);
+      } catch (err) {
+        status.textContent =
+          "Live AI regeneration needs the included /api/suggest function deployed with an Anthropic API key (see README). Showing the pre-computed suggestions above instead.";
+      }
+    }
+
+    function init() {
+      const song = getSongById("amazing-grace");
+      renderMeta(song);
+      const analyzed = analyzeNotes(song.notes);
+      const summary = summaryText(analyzed);
+      const banner = document.getElementById("summary-banner");
+      banner.textContent = summary.text;
+      banner.className = `summary ${summary.cls}`;
+      renderAnalysisRows(document.getElementById("analysis-rows"), analyzed, song.suggestions);
+      renderContours(song, analyzed);
+
+      document.getElementById("speak-before").addEventListener("click", () => speakMandarin(song.mandarinLine));
+      document.getElementById("speak-after").addEventListener("click", () => speakMandarin(song.correctedLine));
+      document.getElementById("play-melody").addEventListener("click", () => playMelodyBeeps(song.notes));
+      document.getElementById("live-ai-button").addEventListener("click", () => regenerateWithLiveAI(song));
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
 </body>
 </html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Every Tongue — checked songs</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav class="topnav">
+    <a class="brand" href="index.html">Every Tongue</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="library.html" class="active">Library</a>
+      <a href="upload.html">Analyze your own</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <header class="hero small">
+      <h1>Checked songs</h1>
+      <p class="pitch">
+        Hymn lines already run through the tone/melody matcher. Click one to see the full
+        syllable-by-syllable breakdown and the suggested fix.
+      </p>
+    </header>
+
+    <div id="song-grid" class="song-grid"></div>
+  </div>
+
+  <script src="songs.js"></script>
+  <script src="shared.js"></script>
+  <script>
+    function mismatchCount(song) {
+      return analyzeNotes(song.notes).filter((n) => !n.unknown && !n.match).length;
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById("song-grid");
+      SONGS.forEach((song) => {
+        const count = mismatchCount(song);
+        const card = document.createElement("a");
+        card.className = "song-card";
+        card.href = `song.html?id=${encodeURIComponent(song.id)}`;
+        card.innerHTML = `
+          <div class="song-card-title">${song.title}</div>
+          <div class="song-card-tune">${song.tuneName}</div>
+          <div class="song-card-line">${song.mandarinLine}</div>
+          <div class="song-card-badge ${count > 0 ? "warn" : "ok"}">
+            ${count > 0 ? `⚠️ ${count} mismatch${count > 1 ? "es" : ""}` : "✅ no mismatches"}
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", renderGrid);
+  </script>
+</body>
+</html>

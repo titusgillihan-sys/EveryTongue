@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Every Tongue — song analysis</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav class="topnav">
+    <a class="brand" href="index.html">Every Tongue</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="library.html" class="active">Library</a>
+      <a href="upload.html">Analyze your own</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <a class="back-link" href="library.html">← Back to library</a>
+
+    <section class="card given-lines">
+      <h2 id="tune-name"></h2>
+      <div class="line-pair">
+        <span class="label">Original English line</span>
+        <span class="value" id="english-line"></span>
+        <span class="pinyin" id="english-gloss"></span>
+      </div>
+      <div class="line-pair">
+        <span class="label">Current Mandarin translation</span>
+        <span class="value" id="mandarin-line"></span>
+        <span class="pinyin" id="mandarin-pinyin"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Tone vs. melody analysis</h2>
+      <div id="summary-banner" class="summary"></div>
+      <div id="analysis-rows"></div>
+    </section>
+
+    <section class="card">
+      <h2>Before / after</h2>
+      <div class="before-after">
+        <div class="ba-col">
+          <h3>Before</h3>
+          <div id="contour-before"></div>
+          <div class="line-text" id="before-line"></div>
+        </div>
+        <div class="ba-col">
+          <h3>After (tone-corrected)</h3>
+          <div id="contour-after"></div>
+          <div class="line-text" id="after-line"></div>
+          <div class="line-gloss" id="after-gloss"></div>
+        </div>
+      </div>
+      <div class="controls">
+        <button id="play-melody">▶ Play melody (tones as beeps)</button>
+        <button class="secondary" id="speak-before">🔊 Speak "before" line</button>
+        <button class="secondary" id="speak-after">🔊 Speak "after" line</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="songs.js"></script>
+  <script src="shared.js"></script>
+  <script>
+    function renderSong(song) {
+      document.getElementById("tune-name").textContent = `${song.title} — tune: ${song.tuneName}`;
+      document.getElementById("english-line").textContent = song.englishLine;
+      document.getElementById("english-gloss").textContent = song.englishGloss;
+      document.getElementById("mandarin-line").textContent = song.mandarinLine;
+      document.getElementById("mandarin-pinyin").textContent = song.mandarinPinyinLine;
+
+      const analyzed = analyzeNotes(song.notes);
+      const summary = summaryText(analyzed);
+      const banner = document.getElementById("summary-banner");
+      banner.textContent = summary.text;
+      banner.className = `summary ${summary.cls}`;
+      renderAnalysisRows(document.getElementById("analysis-rows"), analyzed, song.suggestions);
+
+      document.getElementById("contour-before").innerHTML = buildContourSVG(analyzed, false, song.suggestions);
+      document.getElementById("contour-after").innerHTML = buildContourSVG(analyzed, true, song.suggestions);
+      document.getElementById("before-line").textContent = `${song.mandarinLine} (${song.mandarinPinyinLine})`;
+      document.getElementById("after-line").textContent = `${song.correctedLine} (${song.correctedPinyinLine})`;
+      document.getElementById("after-gloss").textContent = song.correctedGloss;
+
+      document.getElementById("speak-before").addEventListener("click", () => speakMandarin(song.mandarinLine));
+      document.getElementById("speak-after").addEventListener("click", () => speakMandarin(song.correctedLine));
+      document.getElementById("play-melody").addEventListener("click", () => playMelodyBeeps(song.notes));
+    }
+
+    function init() {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get("id") || "amazing-grace";
+      const song = getSongById(id);
+      if (!song) {
+        document.querySelector(".wrap").innerHTML =
+          '<p class="not-found">Song not found. <a href="library.html">Back to library</a></p>';
+        return;
+      }
+      renderSong(song);
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>

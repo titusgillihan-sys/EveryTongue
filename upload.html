@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Every Tongue — analyze your own line</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav class="topnav">
+    <a class="brand" href="index.html">Every Tongue</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="library.html">Library</a>
+      <a href="upload.html" class="active">Analyze your own</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <header class="hero small">
+      <h1>Analyze your own line</h1>
+      <p class="pitch">
+        Paste a short Mandarin lyric line, pick (or hand-build) a melody shape, and the same
+        rules-based matcher used in the library will flag any tone/melody clashes. This reads
+        directly from a small starter tone dictionary (~150 common worship-song words) — unknown
+        characters are marked rather than guessed.
+      </p>
+    </header>
+
+    <section class="card">
+      <h2>1. Your line</h2>
+      <label class="field-label" for="lyric-input">Mandarin lyric line</label>
+      <input id="lyric-input" type="text" value="奇异恩典，何等甘甜" maxlength="24" />
+      <label class="field-label" for="meaning-input">What it means in English (optional, used for AI suggestions)</label>
+      <input id="meaning-input" type="text" placeholder="e.g. Amazing grace, how sweet the sound" />
+    </section>
+
+    <section class="card">
+      <h2>2. Melody shape</h2>
+      <label class="field-label" for="preset-select">Start from a preset</label>
+      <select id="preset-select"></select>
+      <div class="legend">Then fine-tune any note below by clicking its arrow to cycle ↗ up / → same / ↘ down.</div>
+      <div id="melody-editor" class="melody-editor"></div>
+    </section>
+
+    <div class="controls">
+      <button id="analyze-button">▶ Analyze</button>
+    </div>
+
+    <section class="card" id="results-card" hidden>
+      <h2>Tone vs. melody analysis</h2>
+      <div id="summary-banner" class="summary"></div>
+      <div id="analysis-rows"></div>
+      <div class="controls">
+        <button class="secondary" id="live-ai-button">✨ Get AI suggestions for mismatches</button>
+        <button class="secondary" id="speak-line">🔊 Speak this line</button>
+        <button class="secondary" id="play-melody">▶ Play melody (tones as beeps)</button>
+      </div>
+      <div id="live-ai-status"></div>
+      <div id="contour-preview"></div>
+    </section>
+  </div>
+
+  <script src="tone-dictionary.js"></script>
+  <script src="shared.js"></script>
+  <script>
+    let currentNotes = [];
+
+    function populatePresets() {
+      const select = document.getElementById("preset-select");
+      Object.entries(MELODY_PRESETS).forEach(([key, preset]) => {
+        const opt = document.createElement("option");
+        opt.value = key;
+        opt.textContent = preset.label;
+        select.appendChild(opt);
+      });
+    }
+
+    function buildNotesFromInputs() {
+      const line = document.getElementById("lyric-input").value.trim();
+      const lookedUp = lookupLine(line);
+      const presetKey = document.getElementById("preset-select").value;
+      const directions = MELODY_PRESETS[presetKey].gen(lookedUp.length);
+      const pitches = directionsToPitches(directions);
+      return lookedUp.map((n, i) => ({ ...n, direction: directions[i], pitch: pitches[i] }));
+    }
+
+    function cycleDirection(dir) {
+      if (dir === null || dir === undefined) return null; // first note stays fixed
+      if (dir === "same") return "up";
+      if (dir === "up") return "down";
+      return "same";
+    }
+
+    function recomputePitchesInPlace(notes) {
+      const pitches = directionsToPitches(notes.map((n) => n.direction));
+      notes.forEach((n, i) => (n.pitch = pitches[i]));
+    }
+
+    function renderMelodyEditor() {
+      const container = document.getElementById("melody-editor");
+      container.innerHTML = "";
+      currentNotes.forEach((n, i) => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "melody-chip";
+        const arrow = n.direction === "up" ? "↗" : n.direction === "down" ? "↘" : n.direction === "same" ? "→" : "•";
+        chip.innerHTML = `<span class="hanzi">${n.hanzi}</span><span class="arrow">${arrow}</span>`;
+        chip.disabled = i === 0;
+        chip.addEventListener("click", () => {
+          currentNotes[i].direction = cycleDirection(currentNotes[i].direction);
+          recomputePitchesInPlace(currentNotes);
+          renderMelodyEditor();
+          renderResults();
+        });
+        container.appendChild(chip);
+      });
+    }
+
+    function renderResults() {
+      const analyzed = analyzeNotes(currentNotes);
+      const summary = summaryText(analyzed);
+      const banner = document.getElementById("summary-banner");
+      banner.textContent = summary.text;
+      banner.className = `summary ${summary.cls}`;
+      renderAnalysisRows(document.getElementById("analysis-rows"), analyzed, {});
+      document.getElementById("contour-preview").innerHTML = buildContourSVG(analyzed, false, {});
+      document.getElementById("results-card").hidden = false;
+      document.getElementById("live-ai-status").textContent = "";
+    }
+
+    async function getLiveSuggestions() {
+      const status = document.getElementById("live-ai-status");
+      const analyzed = analyzeNotes(currentNotes);
+      const mismatches = analyzed
+        .filter((n) => !n.unknown && !n.match)
+        .map((n) => ({ index: n.index, hanzi: n.hanzi, pinyin: n.pinyin, tone: n.tone, direction: n.direction }));
+
+      if (mismatches.length === 0) {
+        status.textContent = "No mismatches to suggest fixes for — this line already fits the melody.";
+        return;
+      }
+
+      status.textContent = "Contacting Claude API…";
+      try {
+        const res = await fetch("/api/suggest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mandarinLine: document.getElementById("lyric-input").value.trim(),
+            englishMeaning: document.getElementById("meaning-input").value.trim(),
+            mismatches,
+          }),
+        });
+        if (!res.ok) throw new Error("no server function available");
+        const data = await res.json();
+        status.textContent = "Live suggestions received:";
+        const list = document.createElement("ul");
+        list.className = "live-suggestion-list";
+        (data.results || []).forEach((r) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<strong>${r.word}</strong>: ${r.suggestion}`;
+          list.appendChild(li);
+        });
+        status.appendChild(list);
+      } catch (err) {
+        status.textContent =
+          "Live AI suggestions need the included /api/suggest function deployed with an Anthropic API key (see README). The mismatches above are still flagged correctly by the rules engine either way.";
+      }
+    }
+
+    function init() {
+      populatePresets();
+      document.getElementById("preset-select").value = "amazingGrace";
+
+      document.getElementById("analyze-button").addEventListener("click", () => {
+        currentNotes = buildNotesFromInputs();
+        renderMelodyEditor();
+        renderResults();
+      });
+
+      document.getElementById("preset-select").addEventListener("change", () => {
+        if (currentNotes.length) {
+          currentNotes = buildNotesFromInputs();
+          renderMelodyEditor();
+          renderResults();
+        }
+      });
+
+      document.getElementById("live-ai-button").addEventListener("click", getLiveSuggestions);
+      document.getElementById("speak-line").addEventListener("click", () =>
+        speakMandarin(document.getElementById("lyric-input").value.trim())
+      );
+      document.getElementById("play-melody").addEventListener("click", () => playMelodyBeeps(currentNotes));
+
+      // Show a worked example immediately so the page never opens empty.
+      currentNotes = buildNotesFromInputs();
+      renderMelodyEditor();
+      renderResults();
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>

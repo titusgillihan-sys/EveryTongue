@@ -25,11 +25,52 @@ body {
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
+.topnav {
+  max-width: 760px;
+  margin: 0 auto 24px;
+  padding-inline: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.topnav .brand {
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 1.1rem;
+}
+.topnav .nav-links { display: flex; gap: 16px; }
+.topnav .nav-links a {
+  color: var(--sub);
+  text-decoration: none;
+  font-size: 0.92rem;
+  padding-bottom: 2px;
+  border-bottom: 2px solid transparent;
+}
+.topnav .nav-links a.active,
+.topnav .nav-links a:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
 .wrap {
   max-width: 760px;
   margin: 0 auto;
   padding-inline: 20px;
 }
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--sub);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+.back-link:hover { color: var(--accent); }
+
+header.hero.small h1 { font-size: 1.6rem; }
 
 header.hero {
   text-align: center;
@@ -172,3 +213,119 @@ footer.note {
   margin-top: 24px;
   line-height: 1.5;
 }
+
+/* CTA cards on the home page */
+.cta-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 620px) {
+  .cta-row { grid-template-columns: 1fr; }
+}
+.cta-card {
+  display: block;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--ink);
+  background: var(--accent-soft);
+}
+.cta-card:hover { border-color: var(--accent); }
+.cta-card h3 { margin: 0 0 6px; color: var(--accent); font-size: 1rem; }
+.cta-card p { margin: 0; font-size: 0.88rem; color: var(--sub); }
+
+/* Library grid */
+.song-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+.song-card {
+  display: block;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  text-decoration: none;
+  color: var(--ink);
+}
+.song-card:hover { border-color: var(--accent); }
+.song-card-title { font-weight: 700; font-size: 1.05rem; }
+.song-card-tune { font-size: 0.78rem; color: var(--sub); margin-bottom: 10px; }
+.song-card-line { font-size: 1.15rem; margin-bottom: 12px; }
+.song-card-badge {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 999px;
+}
+.song-card-badge.ok { background: var(--ok-bg); color: var(--ok-fg); }
+.song-card-badge.warn { background: var(--warn-bg); color: var(--warn-fg); }
+
+.not-found { text-align: center; padding: 60px 0; }
+
+/* Upload / analyze form */
+.field-label {
+  display: block;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--sub);
+  margin: 14px 0 6px;
+}
+.field-label:first-child { margin-top: 0; }
+input[type="text"], select {
+  width: 100%;
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+}
+
+.melody-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.melody-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 44px;
+  padding: 8px 6px;
+  background: var(--accent-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+}
+.melody-chip:disabled { opacity: 0.6; cursor: default; }
+.melody-chip:not(:disabled):hover { border-color: var(--accent); }
+.melody-chip .hanzi { font-size: 1.1rem; }
+.melody-chip .arrow { font-size: 0.85rem; color: var(--accent); }
+
+.suggestion-box.pending {
+  background: transparent;
+  border-left-color: var(--line);
+  color: var(--sub);
+}
+.suggestion-box.pending code {
+  background: var(--accent-soft);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.live-suggestion-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 0.88rem;
+}
+.live-suggestion-list li { margin-bottom: 6px; }
+
+.row.unknown { background: #f2efe9; }
