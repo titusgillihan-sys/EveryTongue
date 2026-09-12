@@ -12,16 +12,6 @@ const TONE_EXPECTATION = {
   5: { direction: null, label: "neutral (flexible)" },
 };
 
-const TONE_NAMES = {
-  1: "1st (flat)",
-  2: "2nd (rising)",
-  3: "3rd (dipping)",
-  4: "4th (falling)",
-  5: "neutral",
-};
-
-const DIRECTION_ARROW = { up: "↗", down: "↘", same: "→", null: "•" };
-
 function expectedDirectionForTone(tone) {
   return TONE_EXPECTATION[tone] ? TONE_EXPECTATION[tone].direction : null;
 }
@@ -66,80 +56,58 @@ function summaryText(analyzed) {
   };
 }
 
+/**
+ * Simple by default: a colored strip of every syllable (green = fine, red =
+ * problem), then one plain-English card per mismatch. Tone numbers and
+ * melody-direction jargon (covered on the "How it works" page) are left out
+ * of this view on purpose — this is the "what's different" view, not the
+ * "how we checked" view.
+ */
 function renderAnalysisRows(container, analyzed, suggestions) {
   container.innerHTML = "";
+
+  const strip = document.createElement("div");
+  strip.className = "chip-strip";
   analyzed.forEach((n) => {
-    const row = document.createElement("div");
     const state = n.unknown ? "unknown" : n.match ? "match" : "mismatch";
-    row.className = `row ${state}`;
-    const dirLabel = n.direction ? n.direction : "start";
-
-    let flagHtml;
-    if (n.unknown) {
-      flagHtml = `<div class="cell flag">❔ tone unknown</div>`;
-    } else if (n.match) {
-      flagHtml = `<div class="cell flag">✅ match</div>`;
-    } else {
-      flagHtml = `<div class="cell flag">⚠️ mismatch</div>`;
-    }
-
-    const toneCell = n.unknown
-      ? `<div class="cell tone">not in dictionary</div>`
-      : `<div class="cell tone">Tone ${n.tone} <span class="sub">${TONE_NAMES[n.tone] || ""}</span></div>`;
-
-    row.innerHTML = `
-      <div class="syllable">
-        <span class="hanzi">${n.hanzi}</span>
-        <span class="pinyin">${n.pinyin || ""}</span>
-      </div>
-      ${toneCell}
-      <div class="cell direction">${DIRECTION_ARROW[dirLabel] || "•"} <span class="sub">melody ${dirLabel}</span></div>
-      ${flagHtml}
-    `;
-    container.appendChild(row);
-
-    if (!n.unknown && !n.match && suggestions && suggestions[n.index]) {
-      const suggestion = suggestions[n.index];
-      const glossPart = n.gloss ? ` ("${n.gloss}")` : "";
-
-      const changeBox = document.createElement("div");
-      changeBox.className = "change-box";
-      if (suggestion.becomes) {
-        const b = suggestion.becomes;
-        changeBox.innerHTML = `
-          <span class="change-label">What changes:</span>
-          Sung on this melody, <strong>${n.hanzi}</strong>${glossPart} is pulled toward the tone of
-          <strong>${b.hanzi}</strong> (${b.pinyin}, "${b.meaning}") instead.
-        `;
-      } else {
-        changeBox.innerHTML = `
-          <span class="change-label">What changes:</span>
-          Sung on this melody, <strong>${n.hanzi}</strong>${glossPart} doesn't land as any real
-          Mandarin word — its tone breaks apart, so the line just sounds wrong here rather than
-          becoming a specific different word.
-        `;
-      }
-      container.appendChild(changeBox);
-
-      const box = document.createElement("div");
-      box.className = "suggestion-box";
-      box.innerHTML = `
-        <div class="suggestion-title">AI-suggested alternatives for "${suggestion.word}" (${suggestion.pinyin}, tone ${suggestion.tone})</div>
-        <ul>
-          ${suggestion.alternates
-            .map((alt) => `<li><strong>${alt.hanzi}</strong> (${alt.pinyin}, tone ${alt.tone}) — ${alt.reason}</li>`)
-            .join("")}
-        </ul>
-      `;
-      container.appendChild(box);
-    } else if (!n.unknown && !n.match) {
-      const box = document.createElement("div");
-      box.className = "suggestion-box pending";
-      box.innerHTML = `<div class="suggestion-title">No suggestion yet for "${n.hanzi}" (${n.pinyin}, tone ${n.tone})</div>
-        <div class="sub">Deploy <code>api/suggest.js</code> with an Anthropic API key to generate one live, or add it by hand to the song data.</div>`;
-      container.appendChild(box);
-    }
+    const chip = document.createElement("span");
+    chip.className = `syllable-chip ${state}`;
+    chip.innerHTML = `<span class="hanzi">${n.hanzi}</span><span class="pinyin">${n.pinyin || "?"}</span>`;
+    strip.appendChild(chip);
   });
+  container.appendChild(strip);
+
+  const mismatches = analyzed.filter((n) => !n.unknown && !n.match);
+  if (mismatches.length === 0) return;
+
+  const list = document.createElement("div");
+  list.className = "mismatch-list";
+  mismatches.forEach((n) => {
+    const glossPart = n.gloss ? ` ("${n.gloss}")` : "";
+    const suggestion = suggestions && suggestions[n.index];
+
+    let changeHtml;
+    if (suggestion && suggestion.becomes) {
+      const b = suggestion.becomes;
+      changeHtml = `<strong>${n.hanzi}</strong>${glossPart} is pulled toward <strong>${b.hanzi}</strong> (${b.pinyin}, "${b.meaning}") on this melody.`;
+    } else {
+      changeHtml = `<strong>${n.hanzi}</strong>${glossPart} doesn't land as a real word on this melody — it just breaks.`;
+    }
+
+    let fixHtml = "";
+    if (suggestion && suggestion.alternates && suggestion.alternates.length) {
+      const top = suggestion.alternates[0];
+      fixHtml = `<div class="mismatch-fix">Fix: <strong>${top.hanzi}</strong> (${top.pinyin}) — ${top.reason}</div>`;
+    } else if (!suggestion) {
+      fixHtml = `<div class="mismatch-fix">No suggested fix yet — deploy <code>api/suggest.js</code> with an Anthropic API key to generate one live.</div>`;
+    }
+
+    const card = document.createElement("div");
+    card.className = "mismatch-card";
+    card.innerHTML = `<div class="mismatch-change">⚠️ ${changeHtml}</div>${fixHtml}`;
+    list.appendChild(card);
+  });
+  container.appendChild(list);
 }
 
 function buildContourSVG(analyzed, useCorrectedLabels, suggestions) {

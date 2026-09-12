@@ -17,8 +17,9 @@ understood in about 15 seconds, with three pages:
 ## What it shows
 
 1. The original English line, and its existing (commonly used) Mandarin translation.
-2. A syllable-by-syllable breakdown: the Mandarin word, its tone, the melody's pitch direction at
-   that note, and whether they match — flagged with ✅ or ⚠️.
+2. The whole line as a strip of color-coded syllables (green = fine, red = a problem), so you can
+   see at a glance which words the melody clashes with — the underlying tone numbers and melody
+   directions are covered on the "How it works" page, not repeated here.
 3. For each ⚠️ mismatch, an AI-style suggested alternate word/phrase that keeps the meaning close
    while fitting the melody's direction better.
 4. A before/after pitch-contour comparison (colored markers: green = tone matches the melody,
