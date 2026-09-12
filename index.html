@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Every Tongue — tone/melody mismatch demo</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1>Every Tongue</h1>
+      <p class="pitch">
+        In most of the world's languages, pitch is part of the word. When churches sing translated
+        Western hymns, the melody overrides the words, and the lyrics stop meaning what the
+        translator intended. This tool takes an existing song and a target language and finds the
+        translation that is both faithful and singable against that exact melody — then shows you
+        the difference.
+      </p>
+    </header>
+
+    <section class="card given-lines">
+      <h2 id="tune-name"></h2>
+      <div class="line-pair">
+        <span class="label">Original English line</span>
+        <span class="value" id="english-line"></span>
+        <span class="pinyin" id="english-gloss"></span>
+      </div>
+      <div class="line-pair">
+        <span class="label">Current Mandarin translation</span>
+        <span class="value" id="mandarin-line"></span>
+        <span class="pinyin" id="mandarin-pinyin"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Tone vs. melody analysis</h2>
+      <div id="summary-banner" class="summary"></div>
+      <div class="legend">
+        For each syllable: its Mandarin tone, the melody's pitch direction at that note
+        (relative to the previous note), and whether they line up. ⚠️ mismatches get an
+        AI-suggested alternative below them.
+      </div>
+      <div id="analysis-rows"></div>
+    </section>
+
+    <section class="card">
+      <h2>Before / after</h2>
+      <div class="before-after">
+        <div class="ba-col">
+          <h3>Before (current translation)</h3>
+          <div id="contour-before"></div>
+          <div class="line-text" id="before-line"></div>
+        </div>
+        <div class="ba-col">
+          <h3>After (tone-corrected)</h3>
+          <div id="contour-after"></div>
+          <div class="line-text" id="after-line"></div>
+          <div class="line-gloss" id="after-gloss"></div>
+        </div>
+      </div>
+      <div class="controls">
+        <button id="play-melody">▶ Play melody (tones as beeps)</button>
+        <button class="secondary" id="speak-before">🔊 Speak "before" line</button>
+        <button class="secondary" id="speak-after">🔊 Speak "after" line</button>
+      </div>
+      <div class="controls">
+        <button class="secondary" id="live-ai-button">↻ Regenerate suggestions with live Claude API</button>
+      </div>
+      <div id="live-ai-status"></div>
+    </section>
+
+    <footer class="note">
+      Green markers = tone matches the melody's direction. Red markers = mismatch.
+      MVP scope: Mandarin Chinese only, one demo song ("Amazing Grace"). Tone data follows the
+      CC-CEDICT pinyin/tone convention; this specific example is illustrative and, per the
+      project's own build spec, should be checked against sheet music and a native Mandarin
+      speaker before being presented as a verified real-world case.
+    </footer>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
