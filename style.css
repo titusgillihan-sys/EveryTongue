@@ -105,17 +105,35 @@ header.hero .pitch {
   color: var(--accent);
 }
 
-.given-lines .line-pair {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px 0;
+/* Song detail page: English vs. what the Mandarin actually says */
+.line-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  padding: 14px 0;
   border-bottom: 1px dashed var(--line);
 }
-.given-lines .line-pair:last-child { border-bottom: none; }
-.given-lines .label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--sub); }
-.given-lines .value { font-size: 1.15rem; }
-.given-lines .pinyin { color: var(--sub); font-size: 0.95rem; }
+.line-compare:last-child { border-bottom: none; }
+@media (max-width: 620px) {
+  .line-compare { grid-template-columns: 1fr; }
+}
+.lc-col {
+  padding: 12px;
+  border-radius: 10px;
+}
+.lc-col h3 {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sub);
+}
+.lc-col .lc-text { font-size: 1.1rem; line-height: 1.4; }
+.lc-col .lc-sub { font-size: 0.85rem; color: var(--sub); margin-top: 2px; }
+.lc-col.highlight {
+  background: var(--accent-soft);
+}
+.lc-col.highlight h3 { color: var(--accent); }
 
 .summary {
   font-weight: 600;

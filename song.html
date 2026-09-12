@@ -20,18 +20,13 @@
   <div class="wrap">
     <a class="back-link" href="library.html">← Back to library</a>
 
-    <section class="card given-lines">
+    <section class="card">
       <h2 id="tune-name"></h2>
-      <div class="line-pair">
-        <span class="label">Original English line</span>
-        <span class="value" id="english-line"></span>
-        <span class="pinyin" id="english-gloss"></span>
+      <div class="legend">
+        What the original says, side by side with what a Mandarin listener actually hears the
+        translation saying — before getting into whether the melody's tones agree with it below.
       </div>
-      <div class="line-pair">
-        <span class="label">Current Mandarin translation</span>
-        <span class="value" id="mandarin-line"></span>
-        <span class="pinyin" id="mandarin-pinyin"></span>
-      </div>
+      <div id="line-compare-rows"></div>
     </section>
 
     <section class="card">
@@ -66,12 +61,45 @@
   <script src="songs.js"></script>
   <script src="shared.js"></script>
   <script>
+    function renderLineCompare(song) {
+      // One row per hymn line. Today every song is a single line; this loop is ready
+      // for a song entry to carry more than one without changing this rendering code.
+      const lines = [
+        {
+          english: song.englishLine,
+          mandarin: song.mandarinLine,
+          pinyin: song.mandarinPinyinLine,
+          meaning: song.englishGloss,
+        },
+      ];
+
+      const container = document.getElementById("line-compare-rows");
+      container.innerHTML = "";
+      lines.forEach((line) => {
+        const row = document.createElement("div");
+        row.className = "line-compare";
+        row.innerHTML = `
+          <div class="lc-col">
+            <h3>English (original)</h3>
+            <div class="lc-text">${line.english}</div>
+          </div>
+          <div class="lc-col">
+            <h3>Mandarin (as sung)</h3>
+            <div class="lc-text">${line.mandarin}</div>
+            <div class="lc-sub">${line.pinyin}</div>
+          </div>
+          <div class="lc-col highlight">
+            <h3>What it's really saying</h3>
+            <div class="lc-text">${line.meaning}</div>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
     function renderSong(song) {
       document.getElementById("tune-name").textContent = `${song.title} — tune: ${song.tuneName}`;
-      document.getElementById("english-line").textContent = song.englishLine;
-      document.getElementById("english-gloss").textContent = song.englishGloss;
-      document.getElementById("mandarin-line").textContent = song.mandarinLine;
-      document.getElementById("mandarin-pinyin").textContent = song.mandarinPinyinLine;
+      renderLineCompare(song);
 
       const analyzed = analyzeNotes(song.notes);
       const summary = summaryText(analyzed);
