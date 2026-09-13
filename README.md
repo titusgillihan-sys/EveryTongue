@@ -13,6 +13,13 @@ Scoped to **Mandarin Chinese**. Static, no login, no database, no build step.
 - **Library** (`library.html` → `song.html?id=...`) — pre-analyzed hymn lines.
 - **Analyze your own** (`upload.html`) — paste a line, shape a melody, get ranked fixes live.
 
+## What you see
+
+The whole line renders as a strip of colour-coded syllables (green = fine, red = a problem), so you
+can see at a glance which words the melody clashes with. Each conflict then gets one focused card
+explaining what breaks and what to do about it. The underlying tone numbers and melody directions
+are covered on the "How it works" page rather than repeated for every syllable.
+
 ## What the check actually measures
 
 Not "does this tone match this note." Sung intelligibility depends mainly on avoiding **contrary

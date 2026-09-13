@@ -24,16 +24,6 @@ const CHAO_TONES = {
   5: { shape: null, label: "neutral (flexible)" },
 };
 
-const TONE_NAMES = {
-  1: "1st (flat)",
-  2: "2nd (rising)",
-  3: "3rd (dipping)",
-  4: "4th (falling)",
-  5: "neutral",
-};
-
-const DIRECTION_ARROW = { up: "↗", down: "↘", same: "→", null: "•" };
-
 const MELODY_STEP = { up: 1, same: 0, down: -1 };
 
 /**
@@ -150,127 +140,63 @@ function summaryText(analyzed) {
   };
 }
 
+/**
+ * Simple by default: a colored strip of the whole line (green = fine,
+ * red = a problem), then one focused card per actual conflict. The tone
+ * numbers and melody mechanics are explained on the "How it works" page
+ * rather than repeated for every syllable.
+ *
+ * `soundsLike` carries the editorial "this is pulled toward that real word"
+ * note, which the generator cannot derive.
+ */
 function renderAnalysisRows(container, analyzed, suggestions, soundsLike) {
   container.innerHTML = "";
+
+  const strip = document.createElement("div");
+  strip.className = "chip-strip";
   analyzed.forEach((n) => {
-    const row = document.createElement("div");
     const state = n.unknown ? "unknown" : n.match ? "match" : "mismatch";
-    row.className = `row ${state}`;
-    const dirLabel = n.direction ? n.direction : "start";
-
-    let flagHtml;
-    if (n.unknown) {
-      flagHtml = `<div class="cell flag">❔ tone unknown</div>`;
-    } else if (n.index === 0) {
-      flagHtml = `<div class="cell flag">• line start</div>`;
-    } else if (n.match) {
-      flagHtml = `<div class="cell flag">✅ moves together</div>`;
-    } else {
-      flagHtml = `<div class="cell flag">⚠️ contrary motion</div>`;
-    }
-
-    const sandhiNote = n.sandhi
-      ? ` <span class="sub">→ spoken as tone ${n.effTone} (sandhi)</span>`
-      : "";
-    const toneCell = n.unknown
-      ? `<div class="cell tone">not in dictionary</div>`
-      : `<div class="cell tone">Tone ${n.tone} <span class="sub">${TONE_NAMES[n.tone] || ""}</span>${sandhiNote}</div>`;
-
-    const motionCell =
-      n.index === 0 || n.speechDir === null
-        ? `<div class="cell direction">${DIRECTION_ARROW[dirLabel] || "•"} <span class="sub">melody ${dirLabel}</span></div>`
-        : `<div class="cell direction">${DIRECTION_ARROW[dirLabel] || "•"} <span class="sub">melody ${dirLabel}</span>
-           <br />${DIRECTION_ARROW[n.speechDir] || "•"} <span class="sub">voice ${n.speechDir}</span></div>`;
-
-    row.innerHTML = `
-      <div class="syllable">
-        <span class="hanzi">${n.hanzi}</span>
-        <span class="pinyin">${n.pinyin || ""}</span>
-      </div>
-      ${toneCell}
-      ${motionCell}
-      ${flagHtml}
-    `;
-    container.appendChild(row);
-
-    if (!n.unknown && !n.match) {
-      const suggestion = suggestions && suggestions[n.index];
-      const glossPart = n.gloss ? ` ("${n.gloss}")` : "";
-      const pulled = soundsLike && soundsLike[n.index];
-
-      const changeBox = document.createElement("div");
-      changeBox.className = "change-box";
-      changeBox.innerHTML = pulled
-        ? `<span class="change-label">What changes:</span>
-           The melody moves ${n.direction} here while the voice needs to go ${n.speechDir}.
-           Pulled that far off shape, <strong>${n.hanzi}</strong>${glossPart} lands closer to
-           <strong>${pulled.hanzi}</strong> (${pulled.pinyin}, "${pulled.meaning}").`
-        : `<span class="change-label">What changes:</span>
-           The melody moves ${n.direction} here while the voice needs to go ${n.speechDir}.
-           They pull against each other at <strong>${n.hanzi}</strong>${glossPart}, so its tone
-           flattens out and the syllable stops carrying the word it should.`;
-      container.appendChild(changeBox);
-
-      const box = document.createElement("div");
-      box.className = "suggestion-box";
-
-      if (suggestion && suggestion.locked) {
-        box.innerHTML = `
-          <div class="suggestion-title">No word swap offered — 「${suggestion.locked}」 is a fixed compound</div>
-          <div class="sub">Replacing one syllable of a set phrase produces gibberish rather than a
-          different way to say the same thing, so the meaning gate refuses it. The honest options
-          here are the melody, or a full retranslation of the phrase by a fluent speaker.</div>`;
-      } else if (suggestion && suggestion.alternates && suggestion.alternates.length) {
-        box.innerHTML = `
-          <div class="suggestion-title">Ranked alternatives for "${suggestion.word}" (${suggestion.pinyin}, tone ${suggestion.tone})</div>
-          <ol class="candidate-list">
-            ${suggestion.alternates
-              .map(
-                (alt) => `<li>
-                  <span class="cand-word"><strong>${alt.hanzi}</strong> <span class="sub">${alt.pinyin}, tone ${alt.tone}</span></span>
-                  <span class="cand-badges">
-                    <span class="badge ${alt.resolves ? "badge-clear" : "badge-partial"}">${alt.resolves ? "clears the clash" : "eases it"}</span>
-                    <span class="badge badge-meaning">meaning distance ${alt.distance}</span>
-                  </span>
-                  <div class="sub">${alt.reason}</div>
-                </li>`
-              )
-              .join("")}
-          </ol>`;
-      } else if (suggestion && suggestion.noLexiconEntry) {
-        box.innerHTML = `
-          <div class="suggestion-title">No alternatives in the lexicon for "${n.hanzi}"</div>
-          <div class="sub">This syllable has no entries in the substitution lexicon yet, so nothing
-          is proposed rather than something guessed.</div>`;
-      } else {
-        box.innerHTML = `
-          <div class="suggestion-title">No word swap improves this line within the meaning budget</div>
-          <div class="sub">Every candidate that would sing better changes what the line says by more
-          than the gate allows. Singability never overrides meaning here.</div>`;
-      }
-      container.appendChild(box);
-
-      if (suggestion && suggestion.rejected && suggestion.rejected.length) {
-        const gate = document.createElement("div");
-        gate.className = "gate-box";
-        gate.innerHTML = `<span class="change-label">Meaning gate rejected:</span>
-          ${suggestion.rejected
-            .map((r) => `<strong>${r.hanzi}</strong> (${r.pinyin}, "${r.gloss}") — would have improved
-              singability by ${r.improvement}, but meaning distance ${r.distance} exceeds the budget.`)
-            .join(" ")}`;
-        container.appendChild(gate);
-      }
-
-      if (suggestion && suggestion.melodyFix) {
-        const mel = document.createElement("div");
-        mel.className = "melody-fix-box";
-        mel.innerHTML = `<span class="change-label">Or change the melody, not the words:</span>
-          move this note <strong>${suggestion.melodyFix.direction}</strong> instead and the clash
-          resolves with no change in meaning at all.`;
-        container.appendChild(mel);
-      }
-    }
+    const chip = document.createElement("span");
+    chip.className = `syllable-chip ${state}`;
+    chip.innerHTML = `<span class="hanzi">${n.hanzi}</span><span class="pinyin">${n.pinyin || "?"}</span>`;
+    strip.appendChild(chip);
   });
+  container.appendChild(strip);
+
+  const mismatches = analyzed.filter((n) => !n.unknown && !n.match);
+  if (mismatches.length === 0) return;
+
+  const list = document.createElement("div");
+  list.className = "mismatch-list";
+  mismatches.forEach((n) => {
+    const glossPart = n.gloss ? ` ("${n.gloss}")` : "";
+    const suggestion = suggestions && suggestions[n.index];
+    const pulled = soundsLike && soundsLike[n.index];
+
+    const changeHtml = pulled
+      ? `<strong>${n.hanzi}</strong>${glossPart} is pulled toward <strong>${pulled.hanzi}</strong> (${pulled.pinyin}, "${pulled.meaning}") on this melody.`
+      : `The melody moves ${n.direction} where the voice needs to go ${n.speechDir}, so <strong>${n.hanzi}</strong>${glossPart} doesn't land as a real word here — it just breaks.`;
+
+    let fixHtml = "";
+    if (suggestion && suggestion.locked) {
+      fixHtml = `<div class="mismatch-fix">No word swap: 「${suggestion.locked}」 is a fixed compound, so replacing one syllable would produce gibberish rather than a synonym.</div>`;
+    } else if (suggestion && suggestion.alternates && suggestion.alternates.length) {
+      const top = suggestion.alternates[0];
+      fixHtml = `<div class="mismatch-fix">Fix: <strong>${top.hanzi}</strong> (${top.pinyin}) — ${top.reason}</div>`;
+    } else if (suggestion) {
+      fixHtml = `<div class="mismatch-fix">No word swap improves this line within the meaning budget.</div>`;
+    }
+
+    if (suggestion && suggestion.melodyFix) {
+      fixHtml += `<div class="mismatch-fix">Or move this note <strong>${suggestion.melodyFix.direction}</strong> instead — no change in meaning at all.</div>`;
+    }
+
+    const card = document.createElement("div");
+    card.className = "mismatch-card";
+    card.innerHTML = `<div class="mismatch-change">⚠️ ${changeHtml}</div>${fixHtml}`;
+    list.appendChild(card);
+  });
+  container.appendChild(list);
 }
 
 function buildContourSVG(analyzed, useCorrectedLabels, suggestions) {
@@ -403,7 +329,6 @@ function directionsToPitches(directions, startPitch = 55, step = 5) {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     CHAO_TONES,
-    TONE_NAMES,
     effectiveTones,
     speechInterval,
     motionConflict,
