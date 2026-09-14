@@ -1,0 +1,21 @@
+{
+  "id": "ah-vous-dirai-je",
+  "name": "Ah! vous dirai-je, maman (Twinkle, Twinkle)",
+  "community": "Universal children's tune, known in Vietnam as in most of the world; not a hymn tune. Included as a high-confidence control melody.",
+  "composer": "Anonymous French folk tune, published 1761",
+  "license": "Public domain (18th-century folk tune)",
+  "sourceUrl": "https://en.wikipedia.org/wiki/Ah!_vous_dirai-je,_maman",
+  "meter": "7.7.7.7.7.7",
+  "key": "C major",
+  "verified": false,
+  "confidence": "high",
+  "confidenceNote": "Encoded from memory; the most certain tune in the library. Still needs a human to confirm before it is called verified.",
+  "phrases": [
+    { "hint": "Twinkle twinkle little star", "names": "C4 C4 G4 G4 A4 A4 G4", "midi": [60, 60, 67, 67, 69, 69, 67] },
+    { "hint": "how I wonder what you are", "names": "F4 F4 E4 E4 D4 D4 C4", "midi": [65, 65, 64, 64, 62, 62, 60] },
+    { "hint": "up above the world so high", "names": "G4 G4 F4 F4 E4 E4 D4", "midi": [67, 67, 65, 65, 64, 64, 62] },
+    { "hint": "like a diamond in the sky", "names": "G4 G4 F4 F4 E4 E4 D4", "midi": [67, 67, 65, 65, 64, 64, 62] },
+    { "hint": "Twinkle twinkle little star", "names": "C4 C4 G4 G4 A4 A4 G4", "midi": [60, 60, 67, 67, 69, 69, 67] },
+    { "hint": "how I wonder what you are", "names": "F4 F4 E4 E4 D4 D4 C4", "midi": [65, 65, 64, 64, 62, 62, 60] }
+  ]
+}

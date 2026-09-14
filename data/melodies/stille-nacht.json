@@ -1,0 +1,23 @@
+{
+  "id": "stille-nacht",
+  "name": "Stille Nacht (Silent Night)",
+  "community": "Sung in Vietnamese congregations as \"Đêm Thánh Vô Cùng\" (unverified claim; check a Vietnamese hymnal)",
+  "composer": "Franz Xaver Gruber, 1818",
+  "license": "Public domain (composer died 1863)",
+  "sourceUrl": "https://hymnary.org/tune/stille_nacht_gruber",
+  "meter": "Irregular (6/8)",
+  "key": "C major",
+  "verified": false,
+  "confidence": "medium-low",
+  "confidenceNote": "Encoded from memory. Phrases 1-4 are the familiar opening. Phrases 5-6 ('Round yon virgin...') and especially the two closing 'Sleep in heavenly peace' phrases (7 and 8) need checking against a score; the descent in phrase 8 is a guess at the standard harmonisation's melody.",
+  "phrases": [
+    { "hint": "Si-i-lent night", "names": "G4 A4 G4 E4", "midi": [67, 69, 67, 64] },
+    { "hint": "Ho-o-ly night", "names": "G4 A4 G4 E4", "midi": [67, 69, 67, 64] },
+    { "hint": "All is calm", "names": "D5 D5 B4", "midi": [74, 74, 71] },
+    { "hint": "All is bright", "names": "C5 C5 G4", "midi": [72, 72, 67] },
+    { "hint": "Round yon virgin mother and child", "names": "A4 A4 C5 B4 A4 G4 A4 G4 E4", "midi": [69, 69, 72, 71, 69, 67, 69, 67, 64] },
+    { "hint": "Holy infant so tender and mild", "names": "A4 A4 C5 B4 A4 G4 A4 G4 E4", "midi": [69, 69, 72, 71, 69, 67, 69, 67, 64] },
+    { "hint": "Sleep in heavenly peace", "names": "D5 D5 F5 D5 B4 C5 E5", "midi": [74, 74, 77, 74, 71, 72, 76] },
+    { "hint": "Sleep in heavenly peace", "names": "C5 G4 E4 G4 F4 D4 C4", "midi": [72, 67, 64, 67, 65, 62, 60] }
+  ]
+}

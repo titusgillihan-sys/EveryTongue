@@ -1,0 +1,13 @@
+{
+  "name": "every-tongue",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Set Scripture to melodies a community already knows, without contrary motion between tune and tone.",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "report": "node cli/report.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

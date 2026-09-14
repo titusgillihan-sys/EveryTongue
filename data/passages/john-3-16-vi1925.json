@@ -1,0 +1,13 @@
+{
+  "id": "john-3-16-vi1925",
+  "reference": "Giăng 3:16",
+  "versionId": "VI1925",
+  "sourceUrl": "https://ebible.org/vie1934/JHN03.htm",
+  "chunking": "hand-chunked at clause boundaries into phrase-sized units; no chunker in this stage",
+  "chunks": [
+    "Vì Đức Chúa Trời yêu thương thế gian,",
+    "đến nỗi đã ban Con một của Ngài,",
+    "hầu cho hễ ai tin Con ấy",
+    "không bị hư mất mà được sự sống đời đời."
+  ]
+}
