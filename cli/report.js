@@ -43,7 +43,11 @@ function width(s) {
   return w;
 }
 const pad = (s, n) => String(s) + " ".repeat(Math.max(0, n - width(s)));
-const fmtTotals = (t) => `${t.conflicts} contrary transition(s), severity ${t.severity}, ${t.secondary} melisma conflict(s)`;
+/** Every total shows conflicts out of CONSTRAINED transitions out of all transitions. */
+const fmtTotals = (t) =>
+  `${t.conflicts} contrary of ${t.constrained} constrained (of ${t.voiceMoving} voice-moving, ${t.transitions} transitions` +
+  `${t.rate === null ? ", nothing tested" : `, rate ${t.rate.toFixed(2)}`}), net ${t.net >= 0 ? "+" : ""}${t.net}, severity ${t.severity}, ${t.secondary} melisma conflict(s)`;
+const fmtShort = (t) => `${t.conflicts}/${t.constrained} constrained of ${t.voiceMoving} voice-moving of ${t.transitions} (net ${t.net >= 0 ? "+" : ""}${t.net})`;
 
 function breakdownTable(setting) {
   const lines = [];
@@ -53,9 +57,10 @@ function breakdownTable(setting) {
     for (const r of chunk.rows) {
       let verdict = "";
       if (r.index === 0) verdict = "(phrase start)";
-      else if (r.unknown) verdict = "(no tone: never flagged)";
+      else if (r.unknown) verdict = "unconstrained (no tone)";
+      else if (!r.constrained) verdict = r.melody === "same" ? "unconstrained (melody flat)" : "unconstrained (voice flat)";
       else if (r.contrary) verdict = `CONTRARY  severity ${r.severity}`;
-      else verdict = "ok";
+      else verdict = "ok (constrained, with the voice)";
       if (r.melisma.contrary) verdict += "  + melisma against tone";
       lines.push(
         `    ${pad(r.index + 1, 3)}${pad(r.text, 10)}${pad(r.label || r.tone, 26)}${pad(r.notes.map(noteName).join(" "), 12)}` +
@@ -106,10 +111,13 @@ function render(out, melodies) {
     const bestMelody = melodies.find((m) => m.id === best.melodyId);
     L.push(settingBlock(`BEST SETTING — ${bestMelody.name} (${best.kind})`, best));
     L.push(
-      `  before -> after: ${baseline.totals.conflicts} -> ${best.totals.conflicts} contrary transitions, ` +
-        `severity ${baseline.totals.severity} -> ${best.totals.severity}, ` +
+      `  before -> after: ${fmtShort(baseline.totals)} -> ${fmtShort(best.totals)}; ` +
+        `severity ${baseline.totals.severity} -> ${best.totals.severity}; ` +
         `melisma conflicts ${baseline.totals.secondary} -> ${best.totals.secondary}`
     );
+    const mv = best.eligibility.melody.movement;
+    L.push(`  eligibility: melody moves on ${mv.moving}/${mv.pairs} steps over ${mv.rangeSemitones} semitones; ` +
+      `melody engages ${best.eligibility.setting.constrainedFraction.toFixed(2)} of voice-moving transitions (floors in data/scoring-thresholds.json, unverified)`);
     L.push(`  deterministic prior: severity ${best.prior.severity}; model verdict (${best.verdict.source}): suitability ${best.verdict.suitability.toFixed(2)}`);
     L.push(`  model rationale: ${best.verdict.rationale}`);
     if (!bestMelody.verified) L.push(`  melody UNVERIFIED (${bestMelody.confidence}): ${bestMelody.confidenceNote}`);
@@ -125,6 +133,7 @@ function render(out, melodies) {
   L.push("All melodies tried (best bounded alignment for each):");
   for (const a of attempts) {
     if (a.infeasible) L.push(`  - ${a.melodyName}: infeasible — ${a.reason}`);
+    else if (a.ineligible) L.push(`  - ${a.melodyName}: INELIGIBLE — ${a.reason}${a.totals ? ` (${fmtTotals(a.totals)})` : ""}`);
     else {
       const r = results.find((x) => x.melodyId === a.melodyId);
       const tag = r ? `beats baseline${r === results[0] ? " (chosen)" : ""}` : "does not beat baseline";
@@ -133,8 +142,8 @@ function render(out, melodies) {
   }
   L.push("");
   L.push("Caveats: melody note lists are encoded from memory and unverified; the Vietnamese tone pitch");
-  L.push("table (tone/vietnamese.js) is unvalidated pending a native speaker; no flagged conflict is a");
-  L.push("confirmed real-world case until a fluent speaker has heard it.");
+  L.push("table (tone/vietnamese.js), the break penalties and the scoring thresholds are unvalidated");
+  L.push("priors; no flagged conflict is a confirmed real-world case until a fluent speaker has heard it.");
   return L.join("\n");
 }
 

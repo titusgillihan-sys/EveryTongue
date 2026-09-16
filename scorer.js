@@ -22,7 +22,16 @@
  *               own span against the direction of that tone's own contour.
  */
 
+const fs = require("node:fs");
+const path = require("node:path");
+
 const MELODY_STEP = { up: 1, same: 0, down: -1 };
+
+/** Thresholds that decide what counts as a constrained transition (data/scoring-thresholds.json, unverified). */
+function loadThresholds(file = path.join(__dirname, "data", "scoring-thresholds.json")) {
+  return JSON.parse(fs.readFileSync(file, "utf8"));
+}
+const THRESHOLDS = loadThresholds();
 
 /** How the speaking voice moves into a syllable: from where the previous
  *  tone ends to where this one starts. null when either side has no shape. */
@@ -31,10 +40,11 @@ function speechInterval(prevShape, shape) {
   return shape[0] - prevShape[1];
 }
 
-function melodyDirection(fromMidi, toMidi) {
+function melodyDirection(fromMidi, toMidi, thresholds = THRESHOLDS) {
   if (fromMidi === null || fromMidi === undefined || toMidi === null || toMidi === undefined) return null;
   const d = toMidi - fromMidi;
-  return d > 0 ? "up" : d < 0 ? "down" : "same";
+  if (Math.abs(d) < thresholds.melodyMoveSemitones) return "same";
+  return d > 0 ? "up" : "down";
 }
 
 function directionLabel(signed) {
@@ -46,17 +56,25 @@ function directionLabel(signed) {
 
 /**
  * Melody up while speech goes down (or vice versa) = contrary = flagged.
- * Melody flat, speech flat, or both moving the same way = fine.
+ *
+ * A transition is CONSTRAINED only when both the melody and the voice move
+ * (by at least the table thresholds). A flat melody step, a flat tone
+ * transition, or a syllable with no shape creates no constraint: it is
+ * neither a pass nor a fail, and it is reported as unconstrained so that a
+ * melody which avoids the test cannot win it.
+ *
  * `severity` is how far the voice has to move against the tune (1–4).
  */
-function transitionConflict(prevShape, shape, direction) {
+function transitionConflict(prevShape, shape, direction, thresholds = THRESHOLDS) {
   const speech = speechInterval(prevShape, shape);
   const melody = MELODY_STEP[direction];
-  if (speech === null || melody === undefined || melody === 0 || speech === 0) {
-    return { contrary: false, severity: 0, speech, melody: melody ?? null };
+  const melodyMoves = melody !== undefined && melody !== 0;
+  const speechMoves = speech !== null && Math.abs(speech) >= thresholds.speechMoveLevels;
+  if (!melodyMoves || !speechMoves) {
+    return { voiceMoves: speechMoves, constrained: false, contrary: false, severity: 0, speech, melody: melody ?? null };
   }
   const contrary = Math.sign(speech) !== Math.sign(melody);
-  return { contrary, severity: contrary ? Math.abs(speech) : 0, speech, melody };
+  return { voiceMoves: true, constrained: true, contrary, severity: contrary ? Math.abs(speech) : 0, speech, melody };
 }
 
 /**
@@ -93,7 +111,9 @@ function scoreSetting(syllables, notes, alignment) {
     const toMidi = notes[first];
     const direction = prev ? melodyDirection(fromMidi, toMidi) : null;
     const prevShape = i > 0 ? syllables[i - 1].shape : null;
-    const t = prev ? transitionConflict(prevShape, syl.shape, direction) : { contrary: false, severity: 0, speech: null };
+    const t = prev
+      ? transitionConflict(prevShape, syl.shape, direction)
+      : { constrained: false, contrary: false, severity: 0, speech: null };
     const m = melismaConflict(syl.shape, notes[first], notes[last]);
     return {
       index: i,
@@ -107,39 +127,130 @@ function scoreSetting(syllables, notes, alignment) {
       melody: direction,
       speech: t.speech,
       speechDir: directionLabel(t.speech),
+      transition: prev !== null,
+      voiceMoves: !!t.voiceMoves,
+      constrained: t.constrained,
       contrary: t.contrary,
       severity: t.severity,
       melisma: { notes: last - first + 1, contrary: m.contrary, severity: m.severity },
     };
   });
-  const totals = rows.reduce(
-    (acc, r) => {
-      if (r.contrary) {
-        acc.conflicts += 1;
-        acc.severity += r.severity;
-      }
-      if (r.melisma.contrary) acc.secondary += 1;
-      return acc;
-    },
-    { conflicts: 0, severity: 0, secondary: 0 }
+  const totals = withRate(
+    rows.reduce(
+      (acc, r) => {
+        if (r.transition) acc.transitions += 1;
+        if (r.voiceMoves) acc.voiceMoving += 1;
+        if (r.constrained) acc.constrained += 1;
+        if (r.contrary) {
+          acc.conflicts += 1;
+          acc.severity += r.severity;
+        }
+        if (r.melisma.contrary) acc.secondary += 1;
+        return acc;
+      },
+      { transitions: 0, voiceMoving: 0, constrained: 0, conflicts: 0, severity: 0, secondary: 0 }
+    )
   );
   return { rows, totals };
 }
 
-/** Lexicographic: primary severity, then primary count, then secondary count. */
+/**
+ * Derived numbers:
+ *   passes = constrained transitions sung WITH the voice
+ *   rate   = conflicts / constrained (null when nothing was constrained:
+ *            nothing tested, nothing passed)
+ *   net    = passes - conflicts
+ */
+function withRate(t) {
+  const passes = t.constrained - t.conflicts;
+  return { ...t, passes, net: passes - t.conflicts, rate: t.constrained > 0 ? t.conflicts / t.constrained : null };
+}
+
+/**
+ * Ranking key, best first:
+ *   1. NET = passes - conflicts, higher is better. Every constrained
+ *      transition sung with the voice counts for; every one sung against
+ *      counts against; an unconstrained transition counts for nothing. So a
+ *      drone scores zero and cannot win, and an alignment gains from parking
+ *      a tone change on a repeated note only when that transition was a
+ *      conflict — hiding a pass costs a point.
+ *   2. conflict rate among constrained transitions (null ranks last)
+ *   3. total primary severity
+ *   4. secondary (melisma) conflicts
+ *   5. more constrained transitions
+ */
 function compareTotals(a, b) {
-  return a.severity - b.severity || a.conflicts - b.conflicts || a.secondary - b.secondary;
+  const ra = a.rate === null ? Infinity : a.rate;
+  const rb = b.rate === null ? Infinity : b.rate;
+  return b.net - a.net || ra - rb || a.severity - b.severity || a.secondary - b.secondary || b.constrained - a.constrained;
 }
 
 function addTotals(a, b) {
-  return {
+  return withRate({
+    transitions: a.transitions + b.transitions,
+    voiceMoving: a.voiceMoving + b.voiceMoving,
+    constrained: a.constrained + b.constrained,
     conflicts: a.conflicts + b.conflicts,
     severity: a.severity + b.severity,
     secondary: a.secondary + b.secondary,
-  };
+  });
 }
 
-const ZERO_TOTALS = Object.freeze({ conflicts: 0, severity: 0, secondary: 0 });
+const ZERO_TOTALS = Object.freeze(withRate({ transitions: 0, voiceMoving: 0, constrained: 0, conflicts: 0, severity: 0, secondary: 0 }));
+
+/**
+ * MELODIC-INTEREST FLOOR. Pushed to its limit, a contrary-motion score says
+ * the ideal melody is a drone, so a melody must move enough to be eligible
+ * at all. Movement is measured across all phrases: the fraction of adjacent
+ * note pairs that move, and the pitch range in semitones.
+ */
+function melodyMovement(melody) {
+  let pairs = 0;
+  let moving = 0;
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const p of melody.phrases) {
+    for (let i = 0; i < p.midi.length; i++) {
+      lo = Math.min(lo, p.midi[i]);
+      hi = Math.max(hi, p.midi[i]);
+      if (i > 0) {
+        pairs += 1;
+        if (melodyDirection(p.midi[i - 1], p.midi[i]) !== "same") moving += 1;
+      }
+    }
+  }
+  return { pairs, moving, movingFraction: pairs ? moving / pairs : 0, rangeSemitones: hi - lo };
+}
+
+function melodyEligibility(melody, thresholds = THRESHOLDS) {
+  const m = melodyMovement(melody);
+  const reasons = [];
+  if (m.movingFraction < thresholds.minMovingFraction) {
+    reasons.push(`only ${m.moving} of ${m.pairs} note steps move (${m.movingFraction.toFixed(2)} < ${thresholds.minMovingFraction})`);
+  }
+  if (m.rangeSemitones < thresholds.minRangeSemitones) {
+    reasons.push(`range ${m.rangeSemitones} semitones < ${thresholds.minRangeSemitones}`);
+  }
+  return { eligible: reasons.length === 0, movement: m, reasons };
+}
+
+/**
+ * A setting is eligible only if the melody engages enough of the transitions
+ * where the VOICE moves. Transitions where the voice is flat (ngang after
+ * ngang, for instance) can never be constrained by any melody, so they are
+ * not in the denominator; a drone still engages none of them.
+ */
+function settingEligibility(totals, thresholds = THRESHOLDS) {
+  const fraction = totals.voiceMoving ? totals.constrained / totals.voiceMoving : 0;
+  const eligible = fraction >= thresholds.minConstrainedFraction;
+  return {
+    eligible,
+    constrainedFraction: fraction,
+    reasons: eligible
+      ? []
+      : [`the melody engages only ${totals.constrained} of the ${totals.voiceMoving} transitions where the voice moves (${fraction.toFixed(2)} < ${thresholds.minConstrainedFraction})`],
+  };
+}
 
 /**
  * Adapter so the scorer contract test (test/scorer-transition.test.js) can be
@@ -172,7 +283,13 @@ function analyzeNotes(notes) {
 
 module.exports = {
   MELODY_STEP,
+  THRESHOLDS,
   ZERO_TOTALS,
+  loadThresholds,
+  withRate,
+  melodyMovement,
+  melodyEligibility,
+  settingEligibility,
   speechInterval,
   melodyDirection,
   directionLabel,

@@ -136,7 +136,7 @@ node cli/report.js --json
 | File | What it is |
 |---|---|
 | `tone/vietnamese.js`, `tone/mandarin.js`, `tone/index.js` | Tone modules behind one interface. Vietnamese reads the five combining marks; Mandarin wraps the dictionary and sandhi. |
-| `scorer.js` | Language-agnostic contrary-motion scorer over Chao shapes. Same rule as `shared.js`; a parity test holds them equal. |
+| `scorer.js`, `data/scoring-thresholds.json` | Language-agnostic contrary-motion scorer over Chao shapes. Same transition rule as `shared.js`; a parity test holds them equal. Counts conflicts against CONSTRAINED transitions only (both melody and voice move), ranks by passes minus conflicts, and applies a melodic-interest floor so a drone is ineligible rather than optimal. Thresholds are an unverified table. |
 | `chunker.js`, `data/break-penalties.json` | Exact k-best DP over break positions, melody-aware (chunk lengths fit the cycled phrase lengths). The penalty table is an unverified prior. |
 | `align.js` | Bounded syllable-to-note alignment (melisma ≤ 2, note-sharing ≤ 2, count difference ≤ 2) and the naive baseline. |
 | `search.js` | Melody × alignment search, per chunk. Empty result set when nothing beats the baseline. |
@@ -156,6 +156,8 @@ node cli/report.js --json
   pending a native speaker. It is one table; one conversation should change it.
 - **The break-penalty table** in `data/break-penalties.json` is a prior about
   where a singer breathes, also unverified.
+- **The scoring thresholds** in `data/scoring-thresholds.json` (what counts as
+  movement, and the melodic-interest floors) are unverified.
 - **Scripture text** is public domain: Kinh Thánh Tiếng Việt 1925 and the
   Chinese Union Version, both copied verbatim from eBible.org, which states
   their public-domain status. Nothing else may be committed.

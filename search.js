@@ -29,7 +29,7 @@
  * beat the baseline. Every result carries both the deterministic `prior` and
  * the model's `verdict`.
  */
-const { scoreSetting, compareTotals, addTotals, ZERO_TOTALS } = require("./scorer.js");
+const { scoreSetting, compareTotals, addTotals, ZERO_TOTALS, melodyEligibility, settingEligibility } = require("./scorer.js");
 const { feasible, enumerateAlignments, naiveAlignment, MAX_COUNT_DIFF } = require("./align.js");
 const { chunkPassage, loadPenalties } = require("./chunker.js");
 
@@ -151,8 +151,17 @@ async function search({ passage, melodies, toneModule, baselineMelodyId, model, 
   baseline.chunks.forEach((c, i) => (c.text = baselineChunking.chunks[i].text));
   baseline.kind = "baseline (one syllable per note)";
 
+  baseline.eligibility = { melody: melodyEligibility(baselineMelody), setting: settingEligibility(baseline.totals) };
+
   // Deterministic search: every melody × its candidate chunkings × bounded alignments per chunk.
   const attempts = melodies.map((melody) => {
+    // THE MELODIC-INTEREST FLOOR: a melody that barely moves avoids the test
+    // and is reported as ineligible, never as optimal.
+    const melodyCheck = melodyEligibility(melody);
+    if (!melodyCheck.eligible) {
+      return { melodyId: melody.id, melodyName: melody.name, infeasible: false, ineligible: true, chunks: [], totals: null,
+        eligibility: { melody: melodyCheck, setting: null }, reason: `melody ineligible: ${melodyCheck.reasons.join("; ")}` };
+    }
     const chunkings = chunkingsFor(passage, melody, toneModule, opts);
     if (!chunkings.length) {
       return { melodyId: melody.id, melodyName: melody.name, infeasible: true, chunks: [], totals: null,
@@ -170,11 +179,19 @@ async function search({ passage, melodies, toneModule, baselineMelodyId, model, 
         bestSetting = setting;
       }
     }
-    return bestSetting || firstInfeasible;
+    if (!bestSetting) return firstInfeasible;
+    // A setting that parked its tone changes on repeated notes dodged the test.
+    const settingCheck = settingEligibility(bestSetting.totals);
+    bestSetting.eligibility = { melody: melodyCheck, setting: settingCheck };
+    if (!settingCheck.eligible) {
+      bestSetting.ineligible = true;
+      bestSetting.reason = `best setting ineligible: ${settingCheck.reasons.join("; ")}`;
+    }
+    return bestSetting;
   });
 
   const improvements = attempts
-    .filter((a) => !a.infeasible && compareTotals(a.totals, baseline.totals) < 0)
+    .filter((a) => !a.infeasible && !a.ineligible && compareTotals(a.totals, baseline.totals) < 0)
     .sort((a, b) => compareTotals(a.totals, b.totals) || a.melodyId.localeCompare(b.melodyId))
     .map((a) => {
       const sameMelody = a.melodyId === baseline.melodyId;

@@ -11,6 +11,7 @@ const { FixtureScriptureProvider } = require("../providers/scripture.js");
 const { StubModelProvider } = require("../providers/model.js");
 const { loadMelodies } = require("../melodies.js");
 const { search } = require("../search.js");
+const { compareTotals } = require("../scorer.js");
 
 test("dictionary tones and third-tone sandhi come through the interface", () => {
   const syl = zh.syllabify("你好");
@@ -51,9 +52,7 @@ test("the full engine runs on a Mandarin passage unchanged", async () => {
   assert.strictEqual(out.language, "zh");
   assert.ok(out.baseline.totals.conflicts > 0, "the baseline should have something to fix");
   assert.ok(out.results.length > 0, "a re-alignment should improve a naive Mandarin setting");
-  for (const r of out.results) {
-    assert.ok(r.totals.severity < out.baseline.totals.severity || r.totals.conflicts < out.baseline.totals.conflicts);
-  }
+  for (const r of out.results) assert.ok(compareTotals(r.totals, out.baseline.totals) < 0);
   const rows = out.baseline.chunks.flatMap((c) => c.rows);
   assert.strictEqual(rows.length, 33, "耶和华是我的牧者 我必不致缺乏 他使我躺卧在青草地上 领我在可安歇的水边 is 33 characters");
   assert.ok(rows.some((r) => r.label.includes("sandhi")), "sandhi is visible in the breakdown");

@@ -41,18 +41,26 @@ class StubModelProvider {
     // pipeline exercises the interface without pretending to have taste.
     const rationale =
       `Stub verdict (no model credentials): "${melody.name}" is ${melody.license}; ` +
-      `deterministic prior is ${prior.severity} severity over ${prior.conflicts} contrary transition(s) ` +
+      `deterministic prior is ${prior.conflicts} contrary of ${prior.constrained} constrained transitions (severity ${prior.severity}) ` +
       `across ${chunkCount ?? passage.chunks.length} chunk(s). A live model would judge whether the tune's character suits ${passage.reference}.`;
     return { suitability: 0.5, rationale: this._s(rationale), source: this.source };
   }
 
   async explainFailure({ passage, baseline, attempts }) {
     const infeasible = attempts.filter((a) => a.infeasible);
-    const noGain = attempts.filter((a) => !a.infeasible);
+    const ineligible = attempts.filter((a) => a.ineligible);
+    const noGain = attempts.filter((a) => !a.infeasible && !a.ineligible);
+    const b = baseline.totals;
     const parts = [
       `No melody-and-alignment setting improves on the baseline for ${passage.reference} ` +
-        `(baseline: ${baseline.totals.conflicts} contrary transition(s), severity ${baseline.totals.severity}).`,
+        `(baseline: ${b.conflicts} contrary of ${b.constrained} constrained transitions out of ${b.transitions}, severity ${b.severity}).`,
     ];
+    if (ineligible.length) {
+      parts.push(
+        `${ineligible.length} melody(ies) were ruled out by the melodic-interest floor: ` +
+          ineligible.map((a) => `${a.melodyId} (${a.reason})`).join("; ") + "."
+      );
+    }
     if (infeasible.length) {
       parts.push(
         `${infeasible.length} melody(ies) could not be tried at all because a chunk's syllable count ` +
