@@ -63,12 +63,18 @@ const TONES = {
   nang:  { shape: [2, 1], mark: "\u0323", label: "nặng (glottalised low)" },
 };
 
-/** Split on whitespace and on hyphens/dashes (hyphenated names are syllables). */
-const SPLIT = /[\s\u2010-\u2015-]+/u;
+/** Hyphens and dashes join the syllables of a transliterated name. */
+const HYPHEN = /[-\u2010-\u2015]/u;
 
 /** Keep letters and combining marks; drop digits (verse numbers) and punctuation. */
 function lettersOnly(token) {
   return token.normalize("NFD").replace(/[^\p{L}\p{M}]/gu, "");
+}
+
+/** Punctuation that follows the letters of a token, e.g. "tôi:" -> ":". */
+function trailingPunctuation(token) {
+  const m = /[^\p{L}\p{M}\d]+$/u.exec(token.normalize("NFC"));
+  return m ? m[0] : "";
 }
 
 /**
@@ -87,23 +93,35 @@ function readTone(token) {
   return null;
 }
 
+/**
+ * Syllables in order. Besides tone and shape, each carries what the chunker
+ * needs to break the text where a reader would: `trailing`, the punctuation
+ * after the syllable, and `joinedToNext`, true inside a hyphenated name
+ * (Giê-hô-va), where a break is never allowed.
+ */
 function syllabify(text) {
-  return String(text)
-    .split(SPLIT)
-    .map((raw) => {
-      const letters = lettersOnly(raw);
-      if (!letters) return null;
+  const out = [];
+  for (const token of String(text).split(/\s+/u)) {
+    const parts = token.split(HYPHEN);
+    const lettered = parts.map((p) => lettersOnly(p));
+    for (let i = 0; i < parts.length; i++) {
+      const letters = lettered[i];
+      if (!letters) continue;
       const tone = readTone(letters);
       const entry = tone ? TONES[tone] : null;
-      return {
+      const joinedToNext = lettered.slice(i + 1).some(Boolean);
+      out.push({
         text: letters.normalize("NFC"),
         tone,
         shape: entry ? entry.shape : null,
         unknown: tone === null,
         label: entry ? entry.label : "unknown (malformed)",
-      };
-    })
-    .filter(Boolean);
+        trailing: joinedToNext ? "" : trailingPunctuation(parts[i]),
+        joinedToNext,
+      });
+    }
+  }
+  return out;
 }
 
 module.exports = {
@@ -113,4 +131,6 @@ module.exports = {
   TONE_MARKS,
   readTone,
   syllabify,
+  /** How syllables rejoin into display text: a space between syllables, a hyphen inside names. */
+  separator: " ",
 };

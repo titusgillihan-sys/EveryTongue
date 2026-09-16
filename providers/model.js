@@ -3,7 +3,7 @@
  * providers/model.js — the judgment layer, behind an interface.
  *
  * ModelProvider interface (all async, all return plain objects):
- *   judgeMelodySuitability({ passage, melody, prior }) -> { suitability: 0..1, rationale, source }
+ *   judgeMelodySuitability({ passage, melody, prior, chunkCount }) -> { suitability: 0..1, rationale, source }
  *   explainFailure({ passage, baseline, attempts })     -> { explanation, source }
  *   rankChunkings({ candidates })                      -> { order: [indices], rationale, source }
  *                                                        (unused until the chunker exists)
@@ -35,14 +35,14 @@ class StubModelProvider {
     return this.marker ? `${this.marker} ${text}` : text;
   }
 
-  async judgeMelodySuitability({ passage, melody, prior }) {
+  async judgeMelodySuitability({ passage, melody, prior, chunkCount }) {
     // Deterministic placeholder judgment: neutral suitability, rationale built
     // from the melody's own metadata and the deterministic score, so the
     // pipeline exercises the interface without pretending to have taste.
     const rationale =
       `Stub verdict (no model credentials): "${melody.name}" is ${melody.license}; ` +
       `deterministic prior is ${prior.severity} severity over ${prior.conflicts} contrary transition(s) ` +
-      `across ${passage.chunks.length} chunk(s). A live model would judge whether the tune's character suits ${passage.reference}.`;
+      `across ${chunkCount ?? passage.chunks.length} chunk(s). A live model would judge whether the tune's character suits ${passage.reference}.`;
     return { suitability: 0.5, rationale: this._s(rationale), source: this.source };
   }
 

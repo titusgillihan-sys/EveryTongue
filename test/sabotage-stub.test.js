@@ -56,7 +56,6 @@ test("model output never reaches a Scripture text field or a Scripture line of t
       for (const c of out.passage.chunks) assert.match(c.source, /^scripture:/);
 
       // Rendered report: the marker appears only on the lines labelled as model output.
-      out.passageChunking = "pre-chunked by hand";
       const lines = render(out, melodies).split("\n");
       for (const line of lines) {
         if (/^\s*(model rationale:|Explanation \()/.test(line)) continue;

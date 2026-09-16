@@ -7,7 +7,12 @@
  *   getPassage(versionId, passageId)   -> Promise<Passage>
  *
  *   Version = { id, name, abbreviation, language, year, publisher, copyright, sourceUrl }
- *   Passage = { id, reference, version, chunks: [{ index, text, source }] }
+ *   Passage = { id, reference, version, text, verses: [{ n, text }],
+ *               chunks: [{ index, text, source }] }   // hand chunks, may be empty
+ *
+ *   `text` is the whole passage as plain text and is what the chunker works
+ *   on; `chunks` are hand-made phrase units kept from stage one (empty when
+ *   the passage has none).
  *
  * Two implementations are planned: FixtureScriptureProvider (this file, reads
  * committed public-domain fixtures, zero network) and a YouVersion provider
@@ -23,8 +28,7 @@
  *     test/sabotage-stub.test.js proves it with a stub that returns a marker.
  *   - The version's copyright notice rides on the passage so every surface
  *     that shows Bible content can show it.
- *   - Chunks are PRE-CHUNKED phrase units in this stage; the chunker comes
- *     later and will take the same Passage shape.
+ *   - The chunker (chunker.js) works on `text`; hand `chunks` are optional.
  */
 const fs = require("node:fs");
 const path = require("node:path");
@@ -94,11 +98,15 @@ class FixtureScriptureProvider {
       throw new Error(`Passage "${passageId}" is from ${raw.versionId}, not ${versionId}`);
     }
     const version = this.version(versionId);
+    const verses = (raw.verses || []).map((v) => Object.freeze({ n: v.n, text: toPlainText(v.text) }));
     return Object.freeze({
       id: raw.id,
       reference: raw.reference,
       version,
-      chunks: raw.chunks.map((text, i) => scriptureChunk(text, i, versionId)),
+      text: verses.map((v) => v.text).join(" "),
+      textSource: `scripture:${versionId}`,
+      verses: Object.freeze(verses),
+      chunks: (raw.chunks || []).map((text, i) => scriptureChunk(text, i, versionId)),
     });
   }
 }

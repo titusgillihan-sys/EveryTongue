@@ -28,7 +28,9 @@ test("every version carries a copyright notice and every passage carries its ver
   for (const meta of await p.listPassages()) {
     const passage = await p.getPassage(meta.versionId, meta.id);
     assert.ok(passage.version.copyright);
-    assert.ok(passage.chunks.length > 0);
+    assert.ok(passage.text.length > 0 && passage.verses.length > 0);
+    assert.strictEqual(passage.textSource, `scripture:${meta.versionId}`);
+    assert.ok(!/\d/.test(passage.text), "no verse numbers downstream");
     for (const c of passage.chunks) {
       assert.strictEqual(c.source, `scripture:${meta.versionId}`);
       assert.ok(!/\d/.test(c.text), "no verse numbers downstream");

@@ -127,6 +127,8 @@ credentials, no network.
 npm test
 node cli/report.js --list
 node cli/report.js --passage psalm-23-vi1925 --melody new-britain
+node cli/report.js --passage psalm-23-1-4-vi1925      # long passage, DP chunker cycles the phrases
+node cli/report.js --passage psalm-23-vi1925 --chunks hand
 node cli/report.js --passage psalm-23-cuvs            # Mandarin, same engine
 node cli/report.js --json
 ```
@@ -135,12 +137,13 @@ node cli/report.js --json
 |---|---|
 | `tone/vietnamese.js`, `tone/mandarin.js`, `tone/index.js` | Tone modules behind one interface. Vietnamese reads the five combining marks; Mandarin wraps the dictionary and sandhi. |
 | `scorer.js` | Language-agnostic contrary-motion scorer over Chao shapes. Same rule as `shared.js`; a parity test holds them equal. |
+| `chunker.js`, `data/break-penalties.json` | Exact k-best DP over break positions, melody-aware (chunk lengths fit the cycled phrase lengths). The penalty table is an unverified prior. |
 | `align.js` | Bounded syllable-to-note alignment (melisma ≤ 2, note-sharing ≤ 2, count difference ≤ 2) and the naive baseline. |
 | `search.js` | Melody × alignment search, per chunk. Empty result set when nothing beats the baseline. |
 | `providers/scripture.js` | `ScriptureProvider`: fixtures now, YouVersion later. Markup parsed to plain text at the boundary; copyright notice carried through. |
 | `providers/model.js` | `ModelProvider`: deterministic stub now, Gloo AI Studio later. Reranks after the search; verdicts cached by input hash. |
 | `melodies.js`, `data/melodies/` | Public-domain melody library with provenance, phrases as MIDI lists. |
-| `data/passages/` | Pre-chunked public-domain passages. No chunker yet. |
+| `data/passages/` | Public-domain passages as verbatim verses; some keep stage-one hand chunks for comparison. |
 | `cli/report.js` | The report: baseline against best setting, per-syllable breakdown. |
 
 ### Unverified, on purpose
@@ -151,6 +154,8 @@ node cli/report.js --json
   phrases 5–6. Check against a score before any is called verified.
 - **The Vietnamese pitch table** in `tone/vietnamese.js` is a judgment call
   pending a native speaker. It is one table; one conversation should change it.
+- **The break-penalty table** in `data/break-penalties.json` is a prior about
+  where a singer breathes, also unverified.
 - **Scripture text** is public domain: Kinh Thánh Tiếng Việt 1925 and the
   Chinese Union Version, both copied verbatim from eBible.org, which states
   their public-domain status. Nothing else may be committed.

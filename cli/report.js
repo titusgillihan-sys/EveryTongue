@@ -22,12 +22,13 @@ const { describeAlignment } = require("../align.js");
 const { search } = require("../search.js");
 
 function parseArgs(argv) {
-  const args = { passage: "psalm-23-vi1925", melody: "new-britain", json: false, list: false };
+  const args = { passage: "psalm-23-vi1925", melody: "new-britain", json: false, list: false, chunks: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--passage") args.passage = argv[++i];
     else if (a === "--melody") args.melody = argv[++i];
     else if (a === "--json") args.json = true;
+    else if (a === "--chunks") args.chunks = argv[++i]; // dp | hand
     else if (a === "--list") args.list = true;
     else if (a === "--help" || a === "-h") args.help = true;
     else throw new Error(`Unknown argument ${a}`);
@@ -48,7 +49,7 @@ function breakdownTable(setting) {
   const lines = [];
   lines.push(`    ${pad("#", 3)}${pad("syllable", 10)}${pad("tone", 26)}${pad("notes", 12)}${pad("voice", 7)}${pad("melody", 8)}verdict`);
   for (const chunk of setting.chunks) {
-    lines.push(`    -- chunk ${chunk.chunkIndex + 1}, phrase ${chunk.phraseIndex + 1} (${chunk.phrase.midi.map(noteName).join(" ")})`);
+    lines.push(`    -- chunk ${chunk.chunkIndex + 1} "${chunk.text}", phrase ${chunk.phraseIndex + 1} (${chunk.phrase.midi.map(noteName).join(" ")})`);
     for (const r of chunk.rows) {
       let verdict = "";
       if (r.index === 0) verdict = "(phrase start)";
@@ -68,6 +69,11 @@ function breakdownTable(setting) {
 function settingBlock(title, setting) {
   const lines = [title];
   lines.push(`  ${fmtTotals(setting.totals)}`);
+  const ck = setting.chunking;
+  if (ck) {
+    const pen = ck.penalty === null || ck.penalty === undefined ? "" : `, break penalty ${ck.penalty}`;
+    lines.push(`  chunking: ${ck.source} (${setting.chunks.length} chunks${pen})`);
+  }
   for (const chunk of setting.chunks) {
     const syl = chunk.rows;
     lines.push(`  ${chunk.chunkIndex + 1}. ${describeAlignment(syl, chunk.phrase.midi, chunk.alignment, noteName)}`);
@@ -84,8 +90,8 @@ function render(out, melodies) {
   L.push(`Version:  ${passage.version.name}`);
   L.push(`Notice:   ${passage.version.copyright}`);
   L.push("");
-  L.push(`Text (${passage.chunks.length} chunks, ${out.passageChunking}):`);
-  passage.chunks.forEach((c, i) => L.push(`  ${i + 1}. ${c.text}`));
+  L.push(`Text:     ${passage.text || passage.chunks.map((c) => c.text).join(" ")}`);
+  L.push(`Chunking: ${out.chunking === "dp" ? "DP chunker (data/break-penalties.json, unverified prior)" : "hand-made chunks"}`);
   L.push("");
 
   const baselineMelody = melodies.find((m) => m.id === baseline.melodyId);
@@ -135,7 +141,7 @@ function render(out, melodies) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    console.log("usage: node cli/report.js [--passage <id>] [--melody <baseline-melody-id>] [--list] [--json]");
+    console.log("usage: node cli/report.js [--passage <id>] [--melody <baseline-melody-id>] [--chunks dp|hand] [--list] [--json]");
     return;
   }
   const scripture = new FixtureScriptureProvider();
@@ -154,8 +160,7 @@ async function main() {
   const toneModule = forLanguage(passage.version.language);
   const model = cached(new StubModelProvider());
 
-  const out = await search({ passage, melodies, toneModule, baselineMelodyId: args.melody, model });
-  out.passageChunking = "pre-chunked by hand";
+  const out = await search({ passage, melodies, toneModule, baselineMelodyId: args.melody, model, chunking: args.chunks });
 
   if (args.json) {
     console.log(JSON.stringify(out, null, 2));

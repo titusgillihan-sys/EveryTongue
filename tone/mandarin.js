@@ -47,8 +47,22 @@ const TONES = {
   5: { shape: null, label: "neutral" },
 };
 
+const CJK = /[\u4e00-\u9fff]/u;
+
+/** Split text into CJK characters, attaching any punctuation that follows a character to it. */
+function tokenize(text) {
+  const tokens = [];
+  for (const ch of String(text)) {
+    if (CJK.test(ch)) tokens.push({ hanzi: ch, trailing: "" });
+    else if (/\s/u.test(ch)) continue;
+    else if (tokens.length) tokens[tokens.length - 1].trailing += ch;
+  }
+  return tokens;
+}
+
 function syllabify(text) {
-  const raw = lookupLine(text).map((s) =>
+  const tokens = tokenize(text);
+  const raw = lookupLine(tokens.map((t) => t.hanzi).join("")).map((s) =>
     s.tone === null && SUPPLEMENT[s.hanzi] ? { hanzi: s.hanzi, ...SUPPLEMENT[s.hanzi] } : s
   );
   const eff = effectiveTones(raw);
@@ -68,6 +82,8 @@ function syllabify(text) {
         : eff[i] !== s.tone
           ? `${TONES[s.tone].label} -> ${entry.label.split(" ")[0]} (sandhi)`
           : entry.label,
+      trailing: tokens[i].trailing,
+      joinedToNext: false,
     };
   });
 }
@@ -78,4 +94,5 @@ module.exports = {
   TONES,
   SUPPLEMENT,
   syllabify,
+  separator: "",
 };
