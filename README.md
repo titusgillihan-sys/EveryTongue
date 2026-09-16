@@ -149,6 +149,12 @@ node cli/report.js --json
 
 ### Unverified, on purpose
 
+Every unverified value is flagged in its data file, listed at the end of every
+report next to the result that depends on it (`unverified.js`), and collected
+into [VALIDATION.md](VALIDATION.md), one page ordered so a short call with a
+Vietnamese speaker resolves the most. Regenerate it with
+`node cli/checklist.js > VALIDATION.md`; a test fails when it is stale.
+
 - **Melody note lists are encoded from memory.** Every melody is `verified: false`
   and carries a `confidenceNote` naming the phrases most likely to be wrong.
   Least confident: Stille Nacht phrases 5–8, New Britain phrase 3, Ode to Joy

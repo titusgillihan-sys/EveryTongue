@@ -122,6 +122,7 @@ function scoreSetting(syllables, notes, alignment) {
       label: syl.label,
       shape: syl.shape,
       unknown: !!syl.unknown,
+      trailing: syl.trailing || "",
       noteSpan: [first, last],
       notes: notes.slice(first, last + 1),
       melody: direction,
