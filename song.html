@@ -44,7 +44,7 @@
           <div class="line-text" id="before-line"></div>
         </div>
         <div class="ba-col">
-          <h3>After (tone-corrected)</h3>
+          <h3>After (best available fix)</h3>
           <div id="contour-after"></div>
           <div class="line-text" id="after-line"></div>
           <div class="line-gloss" id="after-gloss"></div>
@@ -60,6 +60,7 @@
 
   <script src="songs.js"></script>
   <script src="shared.js"></script>
+  <script src="candidates.js"></script>
   <script>
     function renderLineCompare(song) {
       // One row per hymn line. Today every song is a single line; this loop is ready
@@ -106,16 +107,43 @@
       const banner = document.getElementById("summary-banner");
       banner.textContent = summary.text;
       banner.className = `summary ${summary.cls}`;
-      renderAnalysisRows(document.getElementById("analysis-rows"), analyzed, song.suggestions);
 
-      document.getElementById("contour-before").innerHTML = buildContourSVG(analyzed, false, song.suggestions);
-      document.getElementById("contour-after").innerHTML = buildContourSVG(analyzed, true, song.suggestions);
-      document.getElementById("before-line").textContent = `${song.mandarinLine} (${song.mandarinPinyinLine})`;
-      document.getElementById("after-line").textContent = `${song.correctedLine} (${song.correctedPinyinLine})`;
-      document.getElementById("after-gloss").textContent = song.correctedGloss;
+      // Fixes are GENERATED from the same scorer that produced the flags above,
+      // so what is recommended can never disagree with what is flagged.
+      const fixes = bestFixes(song.notes);
+      renderAnalysisRows(document.getElementById("analysis-rows"), analyzed, fixes, song.soundsLike);
+
+      const before = lineTension(song.notes);
+      const wordFixed = applyBestFixes(song.notes, fixes);
+      const melodyFixed = applyMelodyFixes(song.notes, fixes);
+      const wordChanged = lineToText(wordFixed) !== lineToText(song.notes);
+
+      // The "after" picture is COMPUTED by re-running the scorer on the fixed
+      // line — never asserted green.
+      const afterNotes = wordChanged ? wordFixed : melodyFixed;
+      const afterAnalyzed = analyzeNotes(afterNotes);
+      const afterTension = lineTension(afterNotes);
+
+      document.getElementById("contour-before").innerHTML = buildContourSVG(analyzed, false, {});
+      document.getElementById("contour-after").innerHTML = buildContourSVG(afterAnalyzed, false, {});
+      document.getElementById("before-line").textContent =
+        `${song.mandarinLine} (${song.mandarinPinyinLine}) — tension ${before}`;
+
+      if (wordChanged) {
+        document.getElementById("after-line").textContent =
+          `${lineToText(wordFixed)} — tension ${afterTension}`;
+        document.getElementById("after-gloss").textContent =
+          "Top-ranked word swaps applied, each within the meaning budget.";
+      } else {
+        document.getElementById("after-line").textContent =
+          `${song.mandarinLine} — tension ${afterTension}`;
+        document.getElementById("after-gloss").textContent =
+          "No word swap passed the meaning gate here — every flagged syllable sits inside a fixed " +
+          "compound. This is the same words on an adjusted melody instead.";
+      }
 
       document.getElementById("speak-before").addEventListener("click", () => speakMandarin(song.mandarinLine));
-      document.getElementById("speak-after").addEventListener("click", () => speakMandarin(song.correctedLine));
+      document.getElementById("speak-after").addEventListener("click", () => speakMandarin(lineToText(afterNotes)));
       document.getElementById("play-melody").addEventListener("click", () => playMelodyBeeps(song.notes));
     }
 

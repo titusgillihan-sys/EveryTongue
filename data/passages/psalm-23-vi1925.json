@@ -1,0 +1,24 @@
+{
+  "id": "psalm-23-vi1925",
+  "passageKey": "PSA.23.1-2",
+  "reference": "Thi Thiên 23:1-2",
+  "versionId": "VI1925",
+  "sourceUrl": "https://ebible.org/vie1934/PSA023.htm",
+  "verses": [
+    {
+      "n": 1,
+      "text": "Đức Giê-hô-va là Đấng chăn giữ tôi: tôi sẽ chẳng thiếu thốn gì."
+    },
+    {
+      "n": 2,
+      "text": "Ngài khiến tôi an nghỉ nơi đồng cỏ xanh tươi, Dẫn tôi đến mé nước bình tịnh."
+    }
+  ],
+  "chunking": "hand chunks kept from stage one for comparison with the DP chunker",
+  "chunks": [
+    "Đức Giê-hô-va là Đấng chăn giữ tôi:",
+    "tôi sẽ chẳng thiếu thốn gì.",
+    "Ngài khiến tôi an nghỉ nơi đồng cỏ xanh tươi,",
+    "Dẫn tôi đến mé nước bình tịnh."
+  ]
+}

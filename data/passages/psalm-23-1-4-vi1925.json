@@ -1,0 +1,27 @@
+{
+  "id": "psalm-23-1-4-vi1925",
+  "passageKey": "PSA.23.1-4",
+  "reference": "Thi Thiên 23:1-4",
+  "versionId": "VI1925",
+  "sourceUrl": "https://ebible.org/vie1934/PSA023.htm",
+  "verses": [
+    {
+      "n": 1,
+      "text": "Đức Giê-hô-va là Đấng chăn giữ tôi: tôi sẽ chẳng thiếu thốn gì."
+    },
+    {
+      "n": 2,
+      "text": "Ngài khiến tôi an nghỉ nơi đồng cỏ xanh tươi, Dẫn tôi đến mé nước bình tịnh."
+    },
+    {
+      "n": 3,
+      "text": "Ngài bổ lại linh hồn tôi, Dẫn tôi vào các lối công bình, vì cớ danh Ngài."
+    },
+    {
+      "n": 4,
+      "text": "Dầu khi tôi đi trong trũng bóng chết, Tôi sẽ chẳng sợ tai họa nào; vì Chúa ở cùng tôi; Cây trượng và cây gậy của Chúa an ủi tôi."
+    }
+  ],
+  "chunking": "no hand chunks; DP chunker only. Long enough to cycle every melody's phrase list.",
+  "chunks": []
+}

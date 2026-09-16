@@ -22,9 +22,9 @@
       <h1>Analyze your own line</h1>
       <p class="pitch">
         Paste a short Mandarin lyric line, pick (or hand-build) a melody shape, and the same
-        rules-based matcher used in the library will flag any tone/melody clashes. This reads
-        directly from a small starter tone dictionary (~150 common worship-song words) — unknown
-        characters are marked rather than guessed.
+        contrary-motion scorer used in the library flags every place the tune fights the words —
+        then proposes ranked replacements that stay inside a meaning budget you control.
+        Tones come from a ~150-word starter dictionary; unknown characters are marked, never guessed.
       </p>
     </header>
 
@@ -32,7 +32,7 @@
       <h2>1. Your line</h2>
       <label class="field-label" for="lyric-input">Mandarin lyric line</label>
       <input id="lyric-input" type="text" value="奇异恩典，何等甘甜" maxlength="24" />
-      <label class="field-label" for="meaning-input">What it means in English (optional, used for AI suggestions)</label>
+      <label class="field-label" for="meaning-input">What it means in English (optional, for your own reference)</label>
       <input id="meaning-input" type="text" placeholder="e.g. Amazing grace, how sweet the sound" />
     </section>
 
@@ -53,17 +53,23 @@
       <div id="summary-banner" class="summary"></div>
       <div id="analysis-rows"></div>
       <div class="controls">
-        <button class="secondary" id="live-ai-button">✨ Get AI suggestions for mismatches</button>
+        <label class="field-label inline" for="budget-select">Meaning budget</label>
+        <select id="budget-select">
+          <option value="0">0 — interchangeable only</option>
+          <option value="1" selected>1 — allow a nuance shift</option>
+          <option value="2">2 — allow a loose rephrase</option>
+        </select>
         <button class="secondary" id="speak-line">🔊 Speak this line</button>
         <button class="secondary" id="play-melody">▶ Play melody (tones as beeps)</button>
       </div>
-      <div id="live-ai-status"></div>
+      <div id="tension-readout" class="tension-readout"></div>
       <div id="contour-preview"></div>
     </section>
   </div>
 
   <script src="tone-dictionary.js"></script>
   <script src="shared.js"></script>
+  <script src="candidates.js"></script>
   <script>
     let currentNotes = [];
 
@@ -124,50 +130,24 @@
       const banner = document.getElementById("summary-banner");
       banner.textContent = summary.text;
       banner.className = `summary ${summary.cls}`;
-      renderAnalysisRows(document.getElementById("analysis-rows"), analyzed, {});
+
+      const budget = Number(document.getElementById("budget-select").value);
+      const fixes = bestFixes(currentNotes, { meaningBudget: budget });
+      renderAnalysisRows(document.getElementById("analysis-rows"), analyzed, fixes, {});
+
+      const before = lineTension(currentNotes);
+      const wordFixed = applyBestFixes(currentNotes, fixes);
+      const after = lineTension(wordFixed);
+      const changed = lineToText(wordFixed) !== lineToText(currentNotes);
+      document.getElementById("tension-readout").innerHTML = changed
+        ? `Line tension <strong>${before}</strong> → <strong>${after}</strong> if you take every
+           top-ranked swap: <span class="hanzi-inline">${lineToText(currentNotes)}</span> →
+           <span class="hanzi-inline">${lineToText(wordFixed)}</span>`
+        : `Line tension <strong>${before}</strong>. No word swap improves this line inside a meaning
+           budget of ${budget} — the melody suggestions above are the honest fix.`;
+
       document.getElementById("contour-preview").innerHTML = buildContourSVG(analyzed, false, {});
       document.getElementById("results-card").hidden = false;
-      document.getElementById("live-ai-status").textContent = "";
-    }
-
-    async function getLiveSuggestions() {
-      const status = document.getElementById("live-ai-status");
-      const analyzed = analyzeNotes(currentNotes);
-      const mismatches = analyzed
-        .filter((n) => !n.unknown && !n.match)
-        .map((n) => ({ index: n.index, hanzi: n.hanzi, pinyin: n.pinyin, tone: n.tone, direction: n.direction }));
-
-      if (mismatches.length === 0) {
-        status.textContent = "No mismatches to suggest fixes for — this line already fits the melody.";
-        return;
-      }
-
-      status.textContent = "Contacting Claude API…";
-      try {
-        const res = await fetch("/api/suggest", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mandarinLine: document.getElementById("lyric-input").value.trim(),
-            englishMeaning: document.getElementById("meaning-input").value.trim(),
-            mismatches,
-          }),
-        });
-        if (!res.ok) throw new Error("no server function available");
-        const data = await res.json();
-        status.textContent = "Live suggestions received:";
-        const list = document.createElement("ul");
-        list.className = "live-suggestion-list";
-        (data.results || []).forEach((r) => {
-          const li = document.createElement("li");
-          li.innerHTML = `<strong>${r.word}</strong>: ${r.suggestion}`;
-          list.appendChild(li);
-        });
-        status.appendChild(list);
-      } catch (err) {
-        status.textContent =
-          "Live AI suggestions need the included /api/suggest function deployed with an Anthropic API key (see README). The mismatches above are still flagged correctly by the rules engine either way.";
-      }
     }
 
     function init() {
@@ -188,7 +168,9 @@
         }
       });
 
-      document.getElementById("live-ai-button").addEventListener("click", getLiveSuggestions);
+      document.getElementById("budget-select").addEventListener("change", () => {
+        if (currentNotes.length) renderResults();
+      });
       document.getElementById("speak-line").addEventListener("click", () =>
         speakMandarin(document.getElementById("lyric-input").value.trim())
       );

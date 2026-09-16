@@ -1,0 +1,19 @@
+{
+  "id": "new-britain",
+  "name": "New Britain (Amazing Grace)",
+  "community": "Sung in Vietnamese Protestant congregations as \"Ân Điển Lạ Lùng\" (unverified claim; check a Vietnamese hymnal)",
+  "composer": "Anonymous, Virginia Harmony (1831); arr. William Walker, Southern Harmony (1835)",
+  "license": "Public domain (tune first published 1831)",
+  "sourceUrl": "https://hymnary.org/tune/new_britain",
+  "meter": "8.6.8.6 (CM)",
+  "key": "F major",
+  "verified": false,
+  "confidence": "medium",
+  "confidenceNote": "Encoded from memory. Phrase 3 ('I once was lost but now am found') is the least certain: the notes under 'lost but now' may be wrong. Phrases 1, 2 and 4 are the familiar contour.",
+  "phrases": [
+    { "hint": "A-ma-zing grace how sweet the sound", "names": "C4 F4 A4 F4 A4 G4 F4 D4 C4", "midi": [60, 65, 69, 65, 69, 67, 65, 62, 60] },
+    { "hint": "that saved a wretch like me", "names": "C4 F4 A4 F4 A4 G4 C5", "midi": [60, 65, 69, 65, 69, 67, 72] },
+    { "hint": "I once was lost but now am found", "names": "C5 A4 C5 A4 F4 A4 G4 F4 D4", "midi": [72, 69, 72, 69, 65, 69, 67, 65, 62] },
+    { "hint": "was blind but now I see", "names": "C4 F4 A4 F4 A4 G4 F4", "midi": [60, 65, 69, 65, 69, 67, 65] }
+  ]
+}

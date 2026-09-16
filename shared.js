@@ -4,66 +4,152 @@
  * logic is defined exactly once and stays transparent/inspectable.
  */
 
-const TONE_EXPECTATION = {
-  1: { direction: "same", label: "flat / high" },
-  2: { direction: "up", label: "rising" },
-  3: { direction: "down", label: "dipping / low" },
-  4: { direction: "down", label: "falling" },
-  5: { direction: null, label: "neutral (flexible)" },
+/**
+ * THE LANGUAGE PITCH MODEL — the only place a language's tone shapes live.
+ *
+ * Chao tone letters: each tone as [startLevel, endLevel] on a 1-5 pitch scale.
+ * To add a language, swap this table (and the sandhi rule below); nothing
+ * downstream knows which language it is looking at.
+ *
+ * Mandarin:
+ *   1st  55  high level        2nd  35  rising
+ *   3rd  21  low dipping       4th  51  falling
+ *   neutral — no inherent shape, carries the pitch of its context.
+ */
+const CHAO_TONES = {
+  1: { shape: [5, 5], label: "flat / high" },
+  2: { shape: [3, 5], label: "rising" },
+  3: { shape: [2, 1], label: "dipping / low" },
+  4: { shape: [5, 1], label: "falling" },
+  5: { shape: null, label: "neutral (flexible)" },
 };
 
-function expectedDirectionForTone(tone) {
-  return TONE_EXPECTATION[tone] ? TONE_EXPECTATION[tone].direction : null;
+const MELODY_STEP = { up: 1, same: 0, down: -1 };
+
+/**
+ * Third-tone sandhi: a 3rd tone directly before another 3rd tone is spoken
+ * as a 2nd (rising) tone. 你好 is written nǐ + hǎo but said ní hǎo.
+ *
+ * Scoring the written tone here would flag the wrong syllable, so every
+ * analysis runs on the *effective* (spoken) tone while the row display still
+ * shows the citation tone the dictionary records.
+ *
+ * Returns a parallel array of effective tones; never mutates its input.
+ */
+function effectiveTones(notes) {
+  const tones = notes.map((n) => n.tone ?? null);
+  const out = tones.slice();
+  for (let i = 0; i < tones.length - 1; i++) {
+    if (tones[i] === 3 && tones[i + 1] === 3) out[i] = 2;
+  }
+  return out;
 }
 
 /**
- * Returns true if a syllable's tone is compatible with the melody's pitch
- * direction at that note. Tone 5 (neutral) and unknown tones always match
- * (nothing to flag); the first note of a line can't clash (no previous
- * note to compare against).
+ * Which way the speaking voice actually moves between two adjacent syllables:
+ * from where the previous tone ends to where this one starts.
+ * Returns a signed level difference (+ up, - down, 0 level), or null when
+ * either syllable has no inherent shape (neutral/unknown/line-initial).
  */
-function toneMatchesMelody(tone, direction) {
-  if (!tone || tone === 5) return true;
-  if (direction === null || direction === undefined) return true;
-  const expected = expectedDirectionForTone(tone);
-  if (expected === null) return true;
-  return expected === direction;
+function speechInterval(prevTone, tone) {
+  const prev = CHAO_TONES[prevTone];
+  const cur = CHAO_TONES[tone];
+  if (!prev || !cur || !prev.shape || !cur.shape) return null;
+  return cur.shape[0] - prev.shape[1];
+}
+
+/**
+ * CONTRARY MOTION — the thing that actually degrades sung intelligibility
+ * (Ladd & Kirby 2020). A syllable is not judged on its own tone; what matters
+ * is whether the melody moves *opposite* to the way the voice moves into it.
+ *
+ * Melody up while speech goes down (or vice versa) = contrary = flagged.
+ * Melody flat, speech flat, or both moving the same way = fine.
+ *
+ * `severity` is how far apart they pull (1-4); used to rank candidate fixes.
+ */
+function motionConflict(prevTone, tone, direction) {
+  const speech = speechInterval(prevTone, tone);
+  const melody = MELODY_STEP[direction];
+  if (speech === null || melody === undefined || melody === 0 || speech === 0) {
+    return { contrary: false, severity: 0, speech, melody: melody ?? null };
+  }
+  const contrary = Math.sign(speech) !== Math.sign(melody);
+  return {
+    contrary,
+    severity: contrary ? Math.abs(speech) : 0,
+    speech,
+    melody,
+  };
+}
+
+function speechDirectionLabel(speech) {
+  if (speech === null) return null;
+  if (speech > 0) return "up";
+  if (speech < 0) return "down";
+  return "same";
 }
 
 /**
  * notes: [{ hanzi, pinyin, tone, gloss?, pitch, direction }]
- * Returns the same notes annotated with `match` (bool) and `index`.
- * A note with tone === null (character not found in the dictionary) is
- * marked `unknown: true` and never flagged as a mismatch.
+ * Returns the same notes annotated with:
+ *   index, unknown, effTone (after sandhi), sandhi (bool),
+ *   speech / speechDir (how the voice moves into this syllable),
+ *   match (false only when melody and speech are in contrary motion),
+ *   severity (0-4).
+ *
+ * The first syllable of a line has no preceding syllable, so there is no
+ * transition to judge and it can never be flagged. Unknown and neutral tones
+ * are never flagged either — nothing is guessed.
  */
 function analyzeNotes(notes) {
-  return notes.map((note, i) => ({
-    ...note,
-    index: i,
-    unknown: note.tone === null || note.tone === undefined,
-    match: note.tone ? toneMatchesMelody(note.tone, note.direction) : true,
-  }));
+  const eff = effectiveTones(notes);
+  return notes.map((note, i) => {
+    const unknown = note.tone === null || note.tone === undefined;
+    const prevTone = i > 0 ? eff[i - 1] : null;
+    const { contrary, severity, speech } = unknown
+      ? { contrary: false, severity: 0, speech: null }
+      : motionConflict(prevTone, eff[i], note.direction);
+    return {
+      ...note,
+      index: i,
+      unknown,
+      effTone: eff[i],
+      sandhi: !unknown && eff[i] !== note.tone,
+      speech,
+      speechDir: speechDirectionLabel(speech),
+      match: !contrary,
+      severity,
+    };
+  });
+}
+
+/** Total contrary-motion pressure across a line. Lower is more singable. */
+function lineTension(notes) {
+  return analyzeNotes(notes).reduce((sum, n) => sum + n.severity, 0);
 }
 
 function summaryText(analyzed) {
   const mismatches = analyzed.filter((n) => !n.unknown && !n.match).length;
   if (mismatches === 0) {
-    return { text: "✅ Every syllable's tone fits the melody's direction — no mismatches found.", cls: "ok" };
+    return { text: "✅ No contrary motion — the melody moves with the words everywhere.", cls: "ok" };
   }
   return {
-    text: `⚠️ ${mismatches} tone/melody mismatch${mismatches > 1 ? "es" : ""} found — the melody is pulling a word's pitch away from its correct tone, which can change its meaning.`,
+    text: `⚠️ ${mismatches} place${mismatches > 1 ? "s" : ""} where the melody moves against the words — the tune pulls the voice opposite the direction the language needs, which is what makes a sung line stop being understood.`,
     cls: "warn",
   };
 }
 
 /**
- * Simple by default: a colored strip of every syllable (green = fine, red =
- * problem), then one plain-English card per mismatch. Tone numbers and
- * melody-direction jargon (covered on the "How it works" page) are left out
- * of this view on purpose — this is the "what's different" view, not the
- * "how we checked" view.
+ * Simple by default: a colored strip of the whole line (green = fine,
+ * red = a problem), then one focused card per actual conflict. The tone
+ * numbers and melody mechanics are explained on the "How it works" page
+ * rather than repeated for every syllable.
+ *
+ * `soundsLike` carries the editorial "this is pulled toward that real word"
+ * note, which the generator cannot derive.
  */
-function renderAnalysisRows(container, analyzed, suggestions) {
+function renderAnalysisRows(container, analyzed, suggestions, soundsLike) {
   container.innerHTML = "";
 
   const strip = document.createElement("div");
@@ -85,21 +171,24 @@ function renderAnalysisRows(container, analyzed, suggestions) {
   mismatches.forEach((n) => {
     const glossPart = n.gloss ? ` ("${n.gloss}")` : "";
     const suggestion = suggestions && suggestions[n.index];
+    const pulled = soundsLike && soundsLike[n.index];
 
-    let changeHtml;
-    if (suggestion && suggestion.becomes) {
-      const b = suggestion.becomes;
-      changeHtml = `<strong>${n.hanzi}</strong>${glossPart} is pulled toward <strong>${b.hanzi}</strong> (${b.pinyin}, "${b.meaning}") on this melody.`;
-    } else {
-      changeHtml = `<strong>${n.hanzi}</strong>${glossPart} doesn't land as a real word on this melody — it just breaks.`;
-    }
+    const changeHtml = pulled
+      ? `<strong>${n.hanzi}</strong>${glossPart} is pulled toward <strong>${pulled.hanzi}</strong> (${pulled.pinyin}, "${pulled.meaning}") on this melody.`
+      : `The melody moves ${n.direction} where the voice needs to go ${n.speechDir}, so <strong>${n.hanzi}</strong>${glossPart} doesn't land as a real word here — it just breaks.`;
 
     let fixHtml = "";
-    if (suggestion && suggestion.alternates && suggestion.alternates.length) {
+    if (suggestion && suggestion.locked) {
+      fixHtml = `<div class="mismatch-fix">No word swap: 「${suggestion.locked}」 is a fixed compound, so replacing one syllable would produce gibberish rather than a synonym.</div>`;
+    } else if (suggestion && suggestion.alternates && suggestion.alternates.length) {
       const top = suggestion.alternates[0];
       fixHtml = `<div class="mismatch-fix">Fix: <strong>${top.hanzi}</strong> (${top.pinyin}) — ${top.reason}</div>`;
-    } else if (!suggestion) {
-      fixHtml = `<div class="mismatch-fix">No suggested fix yet — deploy <code>api/suggest.js</code> with an Anthropic API key to generate one live.</div>`;
+    } else if (suggestion) {
+      fixHtml = `<div class="mismatch-fix">No word swap improves this line within the meaning budget.</div>`;
+    }
+
+    if (suggestion && suggestion.melodyFix) {
+      fixHtml += `<div class="mismatch-fix">Or move this note <strong>${suggestion.melodyFix.direction}</strong> instead — no change in meaning at all.</div>`;
     }
 
     const card = document.createElement("div");
@@ -129,8 +218,7 @@ function buildContourSVG(analyzed, useCorrectedLabels, suggestions) {
 
   const markers = analyzed
     .map((d, i) => {
-      const isMismatch = useCorrectedLabels ? false : !d.unknown && !d.match;
-      const color = d.unknown ? "#9a8f80" : isMismatch ? "#e0483e" : "#2f9e5b";
+      const color = d.unknown ? "#9a8f80" : !d.match ? "#e0483e" : "#2f9e5b";
       const label =
         useCorrectedLabels && suggestions && suggestions[d.index]
           ? suggestions[d.index].alternates[0].hanzi
@@ -150,11 +238,34 @@ function buildContourSVG(analyzed, useCorrectedLabels, suggestions) {
   `;
 }
 
+/**
+ * Swap in the first listed alternate at every suggested index and return the
+ * rewritten notes, so the "after" contour is *computed* from the corrected
+ * line rather than asserted green. If a substitution fails to fix the line,
+ * the after-picture says so.
+ */
+function correctedNotes(notes, suggestions) {
+  return notes.map((note, i) => {
+    const s = suggestions && suggestions[i];
+    if (!s || !s.alternates || !s.alternates.length) return { ...note };
+    const alt = s.alternates[0];
+    return { ...note, hanzi: alt.hanzi, pinyin: alt.pinyin, tone: alt.tone };
+  });
+}
+
 // ---- Audio helpers ----
 
 function speakMandarin(text) {
   if (!("speechSynthesis" in window)) {
     alert("This browser doesn't support speech synthesis.");
+    return;
+  }
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length && !voices.some((v) => /^zh/i.test(v.lang))) {
+    alert(
+      "No Mandarin (zh) voice is installed in this browser, so playback would be wrong or silent.\n\n" +
+        "On macOS: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices → add Chinese."
+    );
     return;
   }
   window.speechSynthesis.cancel();
@@ -167,6 +278,7 @@ function speakMandarin(text) {
 let _audioCtx;
 function playMelodyBeeps(notes) {
   _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  if (_audioCtx.state === "suspended") _audioCtx.resume();
   if (notes.length === 0) return;
   const pitches = notes.map((n) => n.pitch);
   const minP = Math.min(...pitches);
@@ -200,7 +312,7 @@ const MELODY_PRESETS = {
     label: "“Amazing Grace” shape",
     gen: (n) => {
       const base = [null, "down", "same", "down", "down", "up", "same", "up"];
-      return Array.from({ length: n }, (_, i) => base[i % base.length] ?? (i === 0 ? null : "same"));
+      return Array.from({ length: n }, (_, i) => (i === 0 ? null : base[i % base.length] || "same"));
     },
   },
 };
@@ -216,9 +328,13 @@ function directionsToPitches(directions, startPitch = 55, step = 5) {
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    TONE_EXPECTATION,
-    toneMatchesMelody,
+    CHAO_TONES,
+    effectiveTones,
+    speechInterval,
+    motionConflict,
     analyzeNotes,
+    lineTension,
+    correctedNotes,
     MELODY_PRESETS,
     directionsToPitches,
   };

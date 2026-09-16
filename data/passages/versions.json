@@ -1,0 +1,24 @@
+[
+  {
+    "id": "VI1925",
+    "name": "Kinh Thánh Tiếng Việt 1925 (Bản Truyền Thống)",
+    "abbreviation": "VI1925",
+    "language": "vi",
+    "year": 1925,
+    "publisher": "British and Foreign Bible Society (1925/1926); text from the eBible.org edition (vie1934)",
+    "copyright": "Public Domain. Kinh Thánh Tiếng Việt 1925 (Bản Truyền Thống): New Testament first published 1923, Old Testament 1925; translation by William Cadman and colleagues. Text courtesy of eBible.org, which states the New Testament entered the public domain on 1 January 2019 and the Old Testament on 1 January 2021.",
+    "sourceUrl": "https://ebible.org/vie1934/",
+    "provenanceNote": "Public-domain status verified 2026-09-13 against https://ebible.org/vie1934/copyright.htm. Verse text copied verbatim from the eBible.org HTML through providers/scripture.js toPlainText()."
+  },
+  {
+    "id": "CUVS",
+    "name": "新标点和合本 (Chinese Union Version, simplified, new punctuation)",
+    "abbreviation": "CUVS",
+    "language": "zh",
+    "year": 1919,
+    "publisher": "Chinese Union Version 1919; new-punctuation edition; text from the eBible.org edition (cmn-cu89s)",
+    "copyright": "Public Domain. 新标点和合本 Chinese Union Version (simplified), per eBible.org.",
+    "sourceUrl": "https://ebible.org/cmn-cu89s/",
+    "provenanceNote": "Public-domain status taken from https://ebible.org/cmn-cu89s/copyright.htm on 2026-09-13. Verse text copied verbatim from the eBible.org HTML. Used only as the Mandarin proof that the language abstraction holds."
+  }
+]

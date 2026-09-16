@@ -1,0 +1,20 @@
+{
+  "id": "john-3-16-vi1925",
+  "passageKey": "JHN.3.16",
+  "reference": "Giăng 3:16",
+  "versionId": "VI1925",
+  "sourceUrl": "https://ebible.org/vie1934/JHN03.htm",
+  "verses": [
+    {
+      "n": 16,
+      "text": "Vì Đức Chúa Trời yêu thương thế gian, đến nỗi đã ban Con một của Ngài, hầu cho hễ ai tin Con ấy không bị hư mất mà được sự sống đời đời."
+    }
+  ],
+  "chunking": "hand chunks kept from stage one for comparison with the DP chunker",
+  "chunks": [
+    "Vì Đức Chúa Trời yêu thương thế gian,",
+    "đến nỗi đã ban Con một của Ngài,",
+    "hầu cho hễ ai tin Con ấy",
+    "không bị hư mất mà được sự sống đời đời."
+  ]
+}

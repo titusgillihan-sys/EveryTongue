@@ -1,0 +1,23 @@
+{
+  "id": "ode-to-joy",
+  "name": "Ode to Joy (Hymn to Joy)",
+  "community": "Beethoven's theme; sung as the hymn \"Joyful, Joyful, We Adore Thee\" and in Vietnamese hymnals (unverified claim; check a Vietnamese hymnal)",
+  "composer": "Ludwig van Beethoven, Symphony No. 9 (1824); hymn arrangement Edward Hodges (1864)",
+  "license": "Public domain (composer died 1827)",
+  "sourceUrl": "https://hymnary.org/tune/hymn_to_joy_beethoven",
+  "meter": "8.7.8.7 D",
+  "key": "C major",
+  "verified": false,
+  "confidence": "high for phrases 1-4 and 7-8; medium for phrases 5-6",
+  "confidenceNote": "Encoded from memory. The A section (phrases 1-4, 7-8) is the universally known theme. The B section (phrases 5-6, 'Melt the clouds of sin and sadness / drive the dark of doubt away') is where a wrong note is most likely, in particular the E-F pairs.",
+  "phrases": [
+    { "hint": "Joyful, joyful, we adore thee", "names": "E4 E4 F4 G4 G4 F4 E4 D4", "midi": [64, 64, 65, 67, 67, 65, 64, 62] },
+    { "hint": "God of glory, Lord of love", "names": "C4 C4 D4 E4 E4 D4 D4", "midi": [60, 60, 62, 64, 64, 62, 62] },
+    { "hint": "Hearts unfold like flowers before thee", "names": "E4 E4 F4 G4 G4 F4 E4 D4", "midi": [64, 64, 65, 67, 67, 65, 64, 62] },
+    { "hint": "opening to the sun above", "names": "C4 C4 D4 E4 D4 C4 C4", "midi": [60, 60, 62, 64, 62, 60, 60] },
+    { "hint": "Melt the clouds of sin and sadness", "names": "D4 D4 E4 C4 D4 E4 F4 E4 C4", "midi": [62, 62, 64, 60, 62, 64, 65, 64, 60] },
+    { "hint": "drive the dark of doubt away", "names": "D4 E4 F4 E4 D4 C4 D4 G3", "midi": [62, 64, 65, 64, 62, 60, 62, 55] },
+    { "hint": "Giver of immortal gladness", "names": "E4 E4 F4 G4 G4 F4 E4 D4", "midi": [64, 64, 65, 67, 67, 65, 64, 62] },
+    { "hint": "fill us with the light of day", "names": "C4 C4 D4 E4 D4 C4 C4", "midi": [60, 60, 62, 64, 62, 60, 60] }
+  ]
+}
