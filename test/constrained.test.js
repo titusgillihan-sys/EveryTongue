@@ -37,16 +37,20 @@ test("a flat tone transition is unconstrained whatever the melody does", () => {
   assert.strictEqual(r.totals.constrained, 0);
 });
 
-test("ranking: passes minus conflicts; a setting that avoids the test cannot win it", () => {
-  const untested = scorer.withRate({ transitions: 8, constrained: 0, conflicts: 0, severity: 0, secondary: 0 });
-  const few = scorer.withRate({ transitions: 8, constrained: 2, conflicts: 0, severity: 0, secondary: 0 });
-  const many = scorer.withRate({ transitions: 8, constrained: 7, conflicts: 0, severity: 0, secondary: 0 });
-  const oneMiss = scorer.withRate({ transitions: 8, constrained: 7, conflicts: 1, severity: 2, secondary: 0 });
+test("ranking: rate first; a setting that avoids the test cannot win it", () => {
+  const T = (constrained, conflicts, severity) =>
+    scorer.withRate({ transitions: 8, voiceMoving: 8, constrained, conflicts, severity, secondary: 0 });
+  const untested = T(0, 0, 0);
+  const few = T(4, 0, 0);
+  const many = T(7, 0, 0);
+  const oneMiss = T(7, 1, 2);
+  const dodged = T(2, 0, 0); // engages 2 of 8 voice-moving transitions: below the floor
   assert.strictEqual(untested.net, 0);
-  assert.ok(scorer.compareTotals(few, untested) < 0, "two passes beat nothing tested");
-  assert.ok(scorer.compareTotals(many, few) < 0, "seven passes beat two");
+  assert.ok(scorer.compareTotals(few, untested) < 0, "four passes beat nothing tested");
+  assert.ok(scorer.compareTotals(many, few) < 0, "at equal rate, seven passes beat four");
   assert.ok(scorer.compareTotals(many, oneMiss) < 0, "seven passes beat six passes and a miss");
-  assert.ok(scorer.compareTotals(oneMiss, few) < 0, "six passes and a miss beat two passes with six transitions dodged");
+  assert.ok(scorer.compareTotals(few, oneMiss) < 0, "RATE FIRST: zero conflicts on four beats one conflict on seven");
+  assert.ok(scorer.compareTotals(oneMiss, dodged) < 0, "but a setting below the coverage floor ranks after any eligible one");
 });
 
 test("hiding a conflict on a repeated note gains no more than resolving it, and hiding a pass costs a point", () => {
@@ -57,7 +61,7 @@ test("hiding a conflict on a repeated note gains no more than resolving it, and 
   // park the conflicting transition on a shared note: conflict gone, pass kept
   const parkedConflict = scorer.scoreSetting(s, [67, 67, 60], [[0, 0], [0, 0], [2, 2]]);
   assert.deepStrictEqual([parkedConflict.totals.conflicts, parkedConflict.totals.passes, parkedConflict.totals.net], [0, 1, 1]);
-  // park the PASSING transition instead: nothing gained, a point lost against the honest one-per-note setting on a fitting tune
+  // park the PASSING transition instead: same rate, fewer constrained, so it ranks below the honest one-per-note setting on a fitting tune
   const parkedPass = scorer.scoreSetting(s, [64, 67, 67], [[0, 0], [1, 1], [1, 1]]);
   assert.deepStrictEqual([parkedPass.totals.conflicts, parkedPass.totals.passes, parkedPass.totals.net], [0, 1, 1]);
   const fitting = scorer.scoreSetting(s, [64, 67, 64], [[0, 0], [1, 1], [2, 2]]);

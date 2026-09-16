@@ -167,22 +167,26 @@ function withRate(t) {
 }
 
 /**
- * Ranking key, best first:
- *   1. NET = passes - conflicts, higher is better. Every constrained
- *      transition sung with the voice counts for; every one sung against
- *      counts against; an unconstrained transition counts for nothing. So a
- *      drone scores zero and cannot win, and an alignment gains from parking
- *      a tone change on a repeated note only when that transition was a
- *      conflict — hiding a pass costs a point.
- *   2. conflict rate among constrained transitions (null ranks last)
+ * Ranking key, best first (RATE FIRST):
+ *   1. eligible before ineligible — a setting whose melody engages too few
+ *      of the voice-moving transitions dodged the test (settingEligibility)
+ *   2. conflict rate among CONSTRAINED transitions, lower is better; a null
+ *      rate (nothing tested) ranks after every real rate
  *   3. total primary severity
  *   4. secondary (melisma) conflicts
- *   5. more constrained transitions
+ *   5. MORE constrained transitions — between equal rates, the setting that
+ *      faced and passed more tests is the stronger evidence
+ *
+ * So once the coverage floor is met, zero conflicts beats any conflict, and
+ * an alignment cannot climb by parking a passing transition on a repeated
+ * note (that lowers key 5 without touching key 2). `net` is still reported.
  */
 function compareTotals(a, b) {
+  const ea = settingEligibility(a).eligible ? 0 : 1;
+  const eb = settingEligibility(b).eligible ? 0 : 1;
   const ra = a.rate === null ? Infinity : a.rate;
   const rb = b.rate === null ? Infinity : b.rate;
-  return b.net - a.net || ra - rb || a.severity - b.severity || a.secondary - b.secondary || b.constrained - a.constrained;
+  return ea - eb || ra - rb || a.severity - b.severity || a.secondary - b.secondary || b.constrained - a.constrained;
 }
 
 function addTotals(a, b) {
