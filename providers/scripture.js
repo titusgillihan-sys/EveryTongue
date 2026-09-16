@@ -3,8 +3,12 @@
  * providers/scripture.js — where Scripture text enters the system.
  *
  * ScriptureProvider interface:
- *   listVersions(language?)            -> Promise<Version[]>
- *   getPassage(versionId, passageId)   -> Promise<Passage>
+ *   listVersions(language?)                 -> Promise<Version[]>
+ *   listPassages(language?)                 -> Promise<[{ id, passageKey, reference, versionId }]>
+ *   getPassage(versionId, passageKeyOrId)   -> Promise<Passage>
+ *
+ *   A passageKey ("PSA.23.1-2") names the same passage across versions; that
+ *   is what the translation lever iterates over.
  *
  *   Version = { id, name, abbreviation, language, year, publisher, copyright, sourceUrl }
  *   Passage = { id, reference, version, text, verses: [{ n, text }],
@@ -64,10 +68,69 @@ function scriptureChunk(text, index, versionId) {
   return Object.freeze({ index, text: toPlainText(text), source: `scripture:${versionId}` });
 }
 
+/**
+ * SYNTHETIC SECOND VERSION — NOT SCRIPTURE.
+ *
+ * Only one public-domain Vietnamese translation with retrievable text exists
+ * (eBible.org carries the 1925 version alone; the 1913 Catholic translation
+ * is not digitised). The translation lever still has to be built and shown,
+ * so a synthetic version can be derived at load time by rotating every tone
+ * mark of the real text one step (ngang->sắc->huyền->hỏi->ngã->nặng->ngang).
+ * The result is gibberish Vietnamese with different tone sequences: it
+ * exercises the lever without anyone writing Scripture-like text, and it is
+ * never committed. It is opt-in ({ includeSynthetic: true }), its chunks are
+ * tagged "synthetic:" rather than "scripture:", and its copyright field says
+ * what it is so every surface that shows it says so too.
+ */
+const SYNTHETIC_ROTATION = ["", "\u0301", "\u0300", "\u0309", "\u0303", "\u0323"]; // ngang, sắc, huyền, hỏi, ngã, nặng
+const SYNTHETIC_SUFFIX = "-SYN";
+
+function rotateTones(text) {
+  return String(text)
+    .split(/(\s+|[-\u2010-\u2015])/u) // keep separators; hyphenated names rotate syllable by syllable
+    .map((token) => {
+      if (!/\p{L}/u.test(token)) return token;
+      const nfd = token.normalize("NFD");
+      const marks = SYNTHETIC_ROTATION.filter((m) => m && nfd.includes(m));
+      const current = marks.length === 1 ? SYNTHETIC_ROTATION.indexOf(marks[0]) : marks.length === 0 ? 0 : -1;
+      if (current < 0) return token;
+      const next = SYNTHETIC_ROTATION[(current + 1) % SYNTHETIC_ROTATION.length];
+      let out = marks.length ? nfd.replace(marks[0], "") : nfd;
+      // Put the new mark after the last vowel letter so it renders on a vowel.
+      const m = /[aeiouyAEIOUY][\u0302\u0306\u031B]?(?![\s\S]*[aeiouyAEIOUY])/u.exec(out);
+      if (!m) return token;
+      const at = m.index + m[0].length;
+      out = out.slice(0, at) + next + out.slice(at);
+      return out.normalize("NFC");
+    })
+    .join("");
+}
+
+function syntheticVersionOf(version) {
+  return Object.freeze({
+    ...version,
+    id: `${version.id}${SYNTHETIC_SUFFIX}`,
+    abbreviation: `${version.abbreviation}${SYNTHETIC_SUFFIX}`,
+    name: `SYNTHETIC tone-rotated copy of ${version.name} — NOT SCRIPTURE`,
+    synthetic: true,
+    derivedFrom: version.id,
+    copyright:
+      `SYNTHETIC TEST DATA, NOT SCRIPTURE. Every tone mark of the ${version.name} text rotated one step ` +
+      `by providers/scripture.js rotateTones(), to exercise the translation lever until a second public-domain ` +
+      `translation is available. Never present this text as Scripture.`,
+  });
+}
+
 class FixtureScriptureProvider {
-  constructor(dir = path.join(__dirname, "..", "data", "passages")) {
-    this.dir = dir;
-    this.versions = JSON.parse(fs.readFileSync(path.join(dir, "versions.json"), "utf8"));
+  /** @param {{ dir?: string, includeSynthetic?: boolean }} [opts] */
+  constructor(opts = {}) {
+    const o = typeof opts === "string" ? { dir: opts } : opts;
+    this.dir = o.dir || path.join(__dirname, "..", "data", "passages");
+    this.includeSynthetic = !!o.includeSynthetic;
+    const real = JSON.parse(fs.readFileSync(path.join(this.dir, "versions.json"), "utf8"));
+    this.versions = this.includeSynthetic
+      ? real.flatMap((v) => (v.language === "vi" ? [v, syntheticVersionOf(v)] : [v]))
+      : real;
   }
 
   async listVersions(language) {
@@ -80,35 +143,57 @@ class FixtureScriptureProvider {
     return v;
   }
 
-  async listPassages(language) {
+  _rawPassages() {
     return fs
       .readdirSync(this.dir)
       .filter((f) => f.endsWith(".json") && f !== "versions.json")
       .sort()
-      .map((f) => JSON.parse(fs.readFileSync(path.join(this.dir, f), "utf8")))
-      .filter((p) => !language || this.version(p.versionId).language === language)
-      .map((p) => ({ id: p.id, reference: p.reference, versionId: p.versionId }));
+      .map((f) => JSON.parse(fs.readFileSync(path.join(this.dir, f), "utf8")));
   }
 
-  async getPassage(versionId, passageId) {
-    const file = path.join(this.dir, `${passageId}.json`);
-    if (!fs.existsSync(file)) throw new Error(`No fixture passage "${passageId}"`);
-    const raw = JSON.parse(fs.readFileSync(file, "utf8"));
-    if (raw.versionId !== versionId) {
-      throw new Error(`Passage "${passageId}" is from ${raw.versionId}, not ${versionId}`);
+  /** Real fixtures plus, when enabled, a synthetic twin of each Vietnamese one. */
+  async listPassages(language) {
+    const out = [];
+    for (const p of this._rawPassages()) {
+      const v = this.version(p.versionId);
+      if (language && v.language !== language) continue;
+      out.push({ id: p.id, passageKey: p.passageKey, reference: p.reference, versionId: p.versionId });
+      const syn = this.versions.find((x) => x.synthetic && x.derivedFrom === p.versionId);
+      if (syn) out.push({ id: `${p.id}${SYNTHETIC_SUFFIX}`, passageKey: p.passageKey, reference: p.reference, versionId: syn.id, synthetic: true });
     }
+    return out;
+  }
+
+  /** Versions that have a given passage, in listVersions order. */
+  async versionsWithPassage(passageKey, language) {
+    const have = new Set((await this.listPassages(language)).filter((p) => p.passageKey === passageKey).map((p) => p.versionId));
+    return this.versions.filter((v) => have.has(v.id));
+  }
+
+  async getPassage(versionId, passageKeyOrId) {
     const version = this.version(versionId);
-    const verses = (raw.verses || []).map((v) => Object.freeze({ n: v.n, text: toPlainText(v.text) }));
+    const sourceVersionId = version.synthetic ? version.derivedFrom : versionId;
+    const raw = this._rawPassages().find(
+      (p) => p.versionId === sourceVersionId && (p.passageKey === passageKeyOrId || p.id === passageKeyOrId || `${p.id}${SYNTHETIC_SUFFIX}` === passageKeyOrId)
+    );
+    if (!raw) throw new Error(`No fixture passage "${passageKeyOrId}" in version ${versionId}`);
+    const transform = version.synthetic ? rotateTones : (t) => t;
+    const tag = version.synthetic ? `synthetic:${versionId}` : `scripture:${versionId}`;
+    const verses = (raw.verses || []).map((v) => Object.freeze({ n: v.n, text: transform(toPlainText(v.text)) }));
     return Object.freeze({
-      id: raw.id,
+      id: version.synthetic ? `${raw.id}${SYNTHETIC_SUFFIX}` : raw.id,
+      passageKey: raw.passageKey,
       reference: raw.reference,
       version,
+      synthetic: !!version.synthetic,
       text: verses.map((v) => v.text).join(" "),
-      textSource: `scripture:${versionId}`,
+      textSource: tag,
       verses: Object.freeze(verses),
-      chunks: (raw.chunks || []).map((text, i) => scriptureChunk(text, i, versionId)),
+      chunks: (raw.chunks || []).map((text, i) =>
+        Object.freeze({ index: i, text: transform(toPlainText(text)), source: tag })
+      ),
     });
   }
 }
 
-module.exports = { FixtureScriptureProvider, toPlainText, scriptureChunk };
+module.exports = { FixtureScriptureProvider, toPlainText, scriptureChunk, rotateTones, syntheticVersionOf };

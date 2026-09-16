@@ -2,9 +2,10 @@
 /**
  * search.js — search over melody × alignment for a pre-chunked passage.
  *
- * (Lever 1, translation choice, is not searched in this stage: the caller
- * passes one passage from one version. When it lands, it is an outer loop
- * over passages from listVersions(), with nothing in here changing.)
+ * LEVER 1, translation choice, is searchTranslations() below: an outer loop
+ * over the same passage in several versions, each run through search()
+ * unchanged, then merged. Different published translations use different
+ * words, so different tone sequences.
  *
  * CHUNKING happens per melody: chunker.js proposes the top-N segmentations
  * whose chunk lengths fit that melody's cycled phrase lengths, and each is
@@ -219,4 +220,52 @@ async function search({ passage, melodies, toneModule, baselineMelodyId, model, 
   return { ...base, results, failure: null };
 }
 
-module.exports = { search, bestAlignment, setPassage, phraseIndexFor };
+/**
+ * THE TRANSLATION LEVER. `passages` are the same passage in several
+ * versions (from ScriptureProvider.versionsWithPassage). The baseline is the
+ * baseline version on the baseline melody; every version is searched with
+ * search() as-is and the improvements are merged, each tagged with its
+ * version, so a result can say "this translation, this melody, this
+ * alignment". Empty `results` means no version, melody or alignment beat
+ * the baseline.
+ */
+async function searchTranslations({ passages, baselineVersionId, ...rest }) {
+  if (!passages.length) throw new Error("searchTranslations needs at least one passage");
+  const baselinePassage = passages.find((p) => p.version.id === baselineVersionId) || passages[0];
+  const runs = [];
+  for (const passage of passages) runs.push({ passage, out: await search({ passage, ...rest }) });
+  const baseRun = runs.find((r) => r.passage === baselinePassage);
+  const baseline = { ...baseRun.out.baseline, versionId: baselinePassage.version.id, version: baselinePassage.version };
+
+  const tag = (r, setting) => ({ ...setting, versionId: r.passage.version.id, version: r.passage.version, synthetic: !!r.passage.synthetic });
+  const attempts = runs.flatMap((r) => r.out.attempts.map((a) => tag(r, a)));
+
+  // Every version's settings are measured against the ONE baseline, not
+  // against their own version's baseline.
+  const improvements = runs
+    .flatMap((r) => r.out.attempts.filter((a) => !a.infeasible && !a.ineligible && compareTotals(a.totals, baseline.totals) < 0).map((a) => tag(r, a)))
+    .map((a) => {
+      const sameVersion = a.versionId === baseline.versionId;
+      const sameMelody = a.melodyId === baseline.melodyId;
+      const sameChunks = sameVersion && chunkTexts(a) === chunkTexts(baseline);
+      const kind = `${sameVersion ? "same translation" : "different translation"}, ${sameMelody ? "same melody" : "different melody"}, ${sameChunks ? "re-aligned" : "re-chunked and re-aligned"}`;
+      return { ...a, kind, prior: a.totals };
+    })
+    .sort((a, b) => compareTotals(a.totals, b.totals) || a.versionId.localeCompare(b.versionId) || a.melodyId.localeCompare(b.melodyId));
+
+  const { model, melodies } = rest;
+  const base = { passages, versions: passages.map((p) => p.version), language: rest.toneModule.id, chunking: baseRun.out.chunking, baseline, attempts, runs };
+  if (improvements.length === 0) {
+    const failure = await model.explainFailure({ passage: baselinePassage, baseline, attempts });
+    return { ...base, results: [], failure };
+  }
+  for (const r of improvements) {
+    const melody = melodies.find((m) => m.id === r.melodyId);
+    const passage = passages.find((p) => p.version.id === r.versionId);
+    r.verdict = await model.judgeMelodySuitability({ passage, melody, prior: r.prior, chunkCount: r.chunks.length });
+  }
+  const results = improvements.slice().sort((a, b) => b.verdict.suitability - a.verdict.suitability || compareTotals(a.prior, b.prior));
+  return { ...base, results, failure: null };
+}
+
+module.exports = { search, searchTranslations, bestAlignment, setPassage, phraseIndexFor };

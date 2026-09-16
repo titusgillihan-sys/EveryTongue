@@ -9,7 +9,7 @@
  */
 const test = require("node:test");
 const assert = require("node:assert");
-const { search } = require("../search.js");
+const { search, searchTranslations } = require("../search.js");
 const { forLanguage } = require("../tone/index.js");
 const { FixtureScriptureProvider } = require("../providers/scripture.js");
 const { StubModelProvider, cached } = require("../providers/model.js");
@@ -64,6 +64,18 @@ test("model output never reaches a Scripture text field or a Scripture line of t
     }
   }
   assert.ok(modelWasConsulted >= 6);
+
+  // The translation lever, with the synthetic version in play.
+  const syn = new FixtureScriptureProvider({ includeSynthetic: true });
+  const passages = [];
+  for (const v of await syn.versionsWithPassage("PSA.23.1-2", "vi")) passages.push(await syn.getPassage(v.id, "PSA.23.1-2"));
+  const out = await searchTranslations({ passages, baselineVersionId: "VI1925", melodies, toneModule: forLanguage("vi"), baselineMelodyId: "new-britain", model });
+  for (const s of textStrings(out, null, [])) assert.ok(!s.includes(MARKER), `marker leaked (lever): ${s}`);
+  const lines = render(out, melodies).split("\n");
+  for (const line of lines) {
+    if (/^\s*(model rationale:|Explanation \()/.test(line)) continue;
+    assert.ok(!line.includes(MARKER), `marker leaked into a lever report line: ${line}`);
+  }
 });
 
 test("Scripture chunks are frozen so nothing downstream can rewrite them", async () => {

@@ -129,6 +129,7 @@ node cli/report.js --list
 node cli/report.js --passage psalm-23-vi1925 --melody new-britain
 node cli/report.js --passage psalm-23-1-4-vi1925      # long passage, DP chunker cycles the phrases
 node cli/report.js --passage psalm-23-vi1925 --chunks hand
+node cli/report.js --passage PSA.23.1-2 --versions all --include-synthetic   # translation lever
 node cli/report.js --passage psalm-23-cuvs            # Mandarin, same engine
 node cli/report.js --json
 ```
@@ -139,7 +140,7 @@ node cli/report.js --json
 | `scorer.js`, `data/scoring-thresholds.json` | Language-agnostic contrary-motion scorer over Chao shapes. Same transition rule as `shared.js`; a parity test holds them equal. Counts conflicts against CONSTRAINED transitions only (both melody and voice move), ranks by passes minus conflicts, and applies a melodic-interest floor so a drone is ineligible rather than optimal. Thresholds are an unverified table. |
 | `chunker.js`, `data/break-penalties.json` | Exact k-best DP over break positions, melody-aware (chunk lengths fit the cycled phrase lengths). The penalty table is an unverified prior. |
 | `align.js` | Bounded syllable-to-note alignment (melisma ≤ 2, note-sharing ≤ 2, count difference ≤ 2) and the naive baseline. |
-| `search.js` | Melody × alignment search, per chunk. Empty result set when nothing beats the baseline. |
+| `search.js` | Melody × chunking × alignment search per version, and `searchTranslations` as the outer loop over versions (lever 1). Empty result set when nothing beats the baseline. |
 | `providers/scripture.js` | `ScriptureProvider`: fixtures now, YouVersion later. Markup parsed to plain text at the boundary; copyright notice carried through. |
 | `providers/model.js` | `ModelProvider`: deterministic stub now, Gloo AI Studio later. Reranks after the search; verdicts cached by input hash. |
 | `melodies.js`, `data/melodies/` | Public-domain melody library with provenance, phrases as MIDI lists. |
@@ -161,5 +162,10 @@ node cli/report.js --json
 - **Scripture text** is public domain: Kinh Thánh Tiếng Việt 1925 and the
   Chinese Union Version, both copied verbatim from eBible.org, which states
   their public-domain status. Nothing else may be committed.
+- **Only one public-domain Vietnamese translation is available**, so the
+  translation lever is demonstrated with a SYNTHETIC second version: the real
+  text with every tone mark rotated one step, derived at load time, opt-in
+  (`--include-synthetic`), tagged `synthetic:` not `scripture:`, and labelled
+  "NOT SCRIPTURE" on every line it appears in. It is gibberish by design.
 - **No flagged conflict is a confirmed real-world case** until a fluent
   speaker has heard it.

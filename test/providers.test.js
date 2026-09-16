@@ -37,7 +37,7 @@ test("every version carries a copyright notice and every passage carries its ver
     }
   }
   assert.deepStrictEqual((await p.listVersions("vi")).map((v) => v.language), ["vi"]);
-  await assert.rejects(p.getPassage("CUVS", "psalm-23-vi1925"), /is from VI1925/);
+  await assert.rejects(p.getPassage("CUVS", "psalm-23-vi1925"), /No fixture passage/);
 });
 
 test("melodies record provenance and their note names cannot drift from the MIDI list", () => {

@@ -19,16 +19,20 @@ const { StubModelProvider, cached } = require("../providers/model.js");
 const { loadMelodies, noteName } = require("../melodies.js");
 const { forLanguage } = require("../tone/index.js");
 const { describeAlignment } = require("../align.js");
-const { search } = require("../search.js");
+const { search, searchTranslations } = require("../search.js");
 
 function parseArgs(argv) {
-  const args = { passage: "psalm-23-vi1925", melody: "new-britain", json: false, list: false, chunks: null };
+  const args = { passage: "psalm-23-vi1925", melody: "new-britain", json: false, list: false, chunks: null,
+    versions: null, includeSynthetic: false, language: "vi" };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--passage") args.passage = argv[++i];
     else if (a === "--melody") args.melody = argv[++i];
     else if (a === "--json") args.json = true;
     else if (a === "--chunks") args.chunks = argv[++i]; // dp | hand
+    else if (a === "--versions") args.versions = argv[++i]; // all | comma-separated version ids
+    else if (a === "--include-synthetic") args.includeSynthetic = true;
+    else if (a === "--language") args.language = argv[++i]; // when --passage is a key shared across languages
     else if (a === "--list") args.list = true;
     else if (a === "--help" || a === "-h") args.help = true;
     else throw new Error(`Unknown argument ${a}`);
@@ -87,20 +91,25 @@ function settingBlock(title, setting) {
 }
 
 function render(out, melodies) {
-  const { passage, baseline, results, attempts, failure } = out;
+  const { baseline, results, attempts, failure } = out;
+  const passages = out.passages || [out.passage];
   const L = [];
   L.push("EVERY TONGUE — setting report (offline: fixture Scripture, stub model)");
   L.push("=".repeat(72));
-  L.push(`Passage:  ${passage.reference}`);
-  L.push(`Version:  ${passage.version.name}`);
-  L.push(`Notice:   ${passage.version.copyright}`);
-  L.push("");
-  L.push(`Text:     ${passage.text || passage.chunks.map((c) => c.text).join(" ")}`);
+  L.push(`Passage:  ${passages[0].reference}`);
+  L.push(`Versions: ${passages.length} (the translation lever searches every version listed)`);
+  for (const p of passages) {
+    const flag = p.synthetic ? "  [SYNTHETIC — NOT SCRIPTURE]" : "";
+    L.push(`  ${p.version.id}: ${p.version.name}${flag}`);
+    L.push(`    Notice: ${p.version.copyright}`);
+    L.push(`    Text:   ${p.text || p.chunks.map((c) => c.text).join(" ")}`);
+  }
   L.push(`Chunking: ${out.chunking === "dp" ? "DP chunker (data/break-penalties.json, unverified prior)" : "hand-made chunks"}`);
   L.push("");
 
+  const versionLabel = (s) => (s.version ? `${s.version.id}${s.synthetic ? " [SYNTHETIC — NOT SCRIPTURE]" : ""}, ` : "");
   const baselineMelody = melodies.find((m) => m.id === baseline.melodyId);
-  L.push(settingBlock(`BASELINE — ${baselineMelody.name}, ${baseline.kind}`, baseline));
+  L.push(settingBlock(`BASELINE — ${versionLabel(baseline)}${baselineMelody.name}, ${baseline.kind}`, baseline));
   L.push("");
 
   if (results.length === 0) {
@@ -109,7 +118,7 @@ function render(out, melodies) {
   } else {
     const best = results[0];
     const bestMelody = melodies.find((m) => m.id === best.melodyId);
-    L.push(settingBlock(`BEST SETTING — ${bestMelody.name} (${best.kind})`, best));
+    L.push(settingBlock(`BEST SETTING — ${versionLabel(best)}${bestMelody.name} (${best.kind})`, best));
     L.push(
       `  before -> after: ${fmtShort(baseline.totals)} -> ${fmtShort(best.totals)}; ` +
         `severity ${baseline.totals.severity} -> ${best.totals.severity}; ` +
@@ -130,14 +139,15 @@ function render(out, melodies) {
   L.push(breakdownTable(baseline));
   L.push("");
 
-  L.push("All melodies tried (best bounded alignment for each):");
+  L.push("All settings tried (best chunking and bounded alignment for each version × melody):");
   for (const a of attempts) {
-    if (a.infeasible) L.push(`  - ${a.melodyName}: infeasible — ${a.reason}`);
-    else if (a.ineligible) L.push(`  - ${a.melodyName}: INELIGIBLE — ${a.reason}${a.totals ? ` (${fmtTotals(a.totals)})` : ""}`);
+    const name = `${versionLabel(a)}${a.melodyName}`;
+    if (a.infeasible) L.push(`  - ${name}: infeasible — ${a.reason}`);
+    else if (a.ineligible) L.push(`  - ${name}: INELIGIBLE — ${a.reason}${a.totals ? ` (${fmtTotals(a.totals)})` : ""}`);
     else {
-      const r = results.find((x) => x.melodyId === a.melodyId);
+      const r = results.find((x) => x.melodyId === a.melodyId && (!a.version || x.versionId === a.versionId));
       const tag = r ? `beats baseline${r === results[0] ? " (chosen)" : ""}` : "does not beat baseline";
-      L.push(`  - ${a.melodyName}: ${fmtTotals(a.totals)} — ${tag}`);
+      L.push(`  - ${name}: ${fmtTotals(a.totals)} — ${tag}`);
     }
   }
   L.push("");
@@ -150,26 +160,39 @@ function render(out, melodies) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    console.log("usage: node cli/report.js [--passage <id>] [--melody <baseline-melody-id>] [--chunks dp|hand] [--list] [--json]");
+    console.log("usage: node cli/report.js [--passage <id|key>] [--melody <baseline-melody-id>] [--versions all|<ids>] [--include-synthetic] [--language vi|zh] [--chunks dp|hand] [--list] [--json]");
     return;
   }
-  const scripture = new FixtureScriptureProvider();
+  const scripture = new FixtureScriptureProvider({ includeSynthetic: args.includeSynthetic });
   const melodies = loadMelodies();
   if (args.list) {
-    console.log("Passages:");
-    for (const p of await scripture.listPassages()) console.log(`  ${p.id}  (${p.reference}, ${p.versionId})`);
+    console.log("Passages (id, key, reference, version):");
+    for (const p of await scripture.listPassages()) console.log(`  ${p.id}  ${p.passageKey}  (${p.reference}, ${p.versionId}${p.synthetic ? ", SYNTHETIC" : ""})`);
     console.log("Melodies:");
     for (const m of melodies) console.log(`  ${m.id}  (${m.name}; ${m.phrases.length} phrases; verified: ${m.verified})`);
     return;
   }
-  const passages = await scripture.listPassages();
-  const meta = passages.find((p) => p.id === args.passage);
+  const all = await scripture.listPassages();
+  const meta =
+    all.find((p) => p.id === args.passage) ||
+    all.find((p) => p.passageKey === args.passage && !p.synthetic && scripture.version(p.versionId).language === args.language);
   if (!meta) throw new Error(`Unknown passage "${args.passage}" (try --list)`);
-  const passage = await scripture.getPassage(meta.versionId, meta.id);
-  const toneModule = forLanguage(passage.version.language);
+  const baselineVersion = scripture.version(meta.versionId);
+  const toneModule = forLanguage(baselineVersion.language);
   const model = cached(new StubModelProvider());
 
-  const out = await search({ passage, melodies, toneModule, baselineMelodyId: args.melody, model, chunking: args.chunks });
+  // Which versions to search: the passage's own, or every version that has it.
+  let versionIds = [meta.versionId];
+  if (args.versions === "all") {
+    versionIds = (await scripture.versionsWithPassage(meta.passageKey, baselineVersion.language)).map((v) => v.id);
+  } else if (args.versions) {
+    versionIds = args.versions.split(",");
+  }
+  const passages = [];
+  for (const id of versionIds) passages.push(await scripture.getPassage(id, meta.passageKey));
+
+  const out = await searchTranslations({ passages, baselineVersionId: meta.versionId, melodies, toneModule,
+    baselineMelodyId: args.melody, model, chunking: args.chunks });
 
   if (args.json) {
     console.log(JSON.stringify(out, null, 2));
