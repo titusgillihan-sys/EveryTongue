@@ -147,6 +147,13 @@ node cli/report.js --json
 | `data/passages/` | Public-domain passages as verbatim verses; some keep stage-one hand chunks for comparison. |
 | `cli/report.js` | The report: baseline against best setting, per-syllable breakdown. |
 
+### Self-eval set
+
+`node eval/run.js` runs a hand-built set of cases (`eval/cases.json`), not a
+benchmark. Every expectation was written from the design before the case
+was run. Failures are reported with what they reveal and are not tuned away;
+a case marked `knownFailing` keeps its principled expectation.
+
 ### Unverified, on purpose
 
 Every unverified value is flagged in its data file, listed at the end of every
