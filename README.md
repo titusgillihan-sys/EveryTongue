@@ -142,7 +142,7 @@ node cli/report.js --json
 | `align.js` | Bounded syllable-to-note alignment (melisma ≤ 2, note-sharing ≤ 2, count difference ≤ 2) and the naive baseline. |
 | `search.js` | Melody × chunking × alignment search per version, and `searchTranslations` as the outer loop over versions (lever 1). Empty result set when nothing beats the baseline. |
 | `providers/scripture.js` | `ScriptureProvider`: fixtures now, YouVersion later. Markup parsed to plain text at the boundary; copyright notice carried through. |
-| `providers/model.js` | `ModelProvider`: deterministic stub now, Gloo AI Studio later. Reranks after the search; verdicts cached by input hash. |
+| `providers/model.js`, `providers/gloo.js`, `providers/index.js` | `ModelProvider`: deterministic stub (default, the demo path) and a Gloo AI Studio implementation (Completions v2, unwired unless `GLOO_API_KEY` is set AND `--model gloo` / `ET_MODEL=gloo`). Three judgments: chunk-break naturalness (one call per melody over the DP's top N), melody suitability (rerank after the search), failure explanation. Every result records the deterministic prior beside the model verdict; verdicts are cached in memory by input hash. |
 | `melodies.js`, `data/melodies/` | Public-domain melody library with provenance, phrases as MIDI lists. |
 | `data/passages/` | Public-domain passages as verbatim verses; some keep stage-one hand chunks for comparison. |
 | `cli/report.js` | The report: baseline against best setting, per-syllable breakdown. |

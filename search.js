@@ -8,9 +8,13 @@
  * words, so different tone sequences.
  *
  * CHUNKING happens per melody: chunker.js proposes the top-N segmentations
- * whose chunk lengths fit that melody's cycled phrase lengths, and each is
- * aligned and scored. The chunking's break penalty is recorded as a
- * deterministic prior and used only to break ties between equal scores.
+ * whose chunk lengths fit that melody's cycled phrase lengths, the model is
+ * asked ONCE per melody which of them break naturally (one call carrying all
+ * N candidates, so the call count is translations × melodies, never ×
+ * chunkings), and each is aligned and scored. The chunking chosen is the
+ * best-scoring one; the model's order breaks ties and its "unnatural" flags
+ * exclude a candidate unless nothing else fits. Every setting records both
+ * the DP penalty (prior) and the model's verdict.
  *
  * ASSUMPTION THAT MAKES THIS LINEAR: phrase boundaries are breaths. No
  * transition is scored across a chunk boundary, so the best alignment for
@@ -168,19 +172,45 @@ async function search({ passage, melodies, toneModule, baselineMelodyId, model, 
       return { melodyId: melody.id, melodyName: melody.name, infeasible: true, chunks: [], totals: null,
         reason: "no chunking of the passage fits this melody's phrase lengths within the alignment bound" };
     }
+    return { melody, chunkings, melodyCheck };
+  });
+
+  // Model verdict on the chunkings, one call per melody, AFTER the DP.
+  for (const a of attempts) {
+    if (a.ineligible) continue;
+    a.verdictOnChunkings =
+      chunking === "dp" && a.chunkings.length > 1
+        ? await model.rankChunkings({
+            passage,
+            melody: a.melody,
+            candidates: a.chunkings.map((ck, index) => ({ index, penalty: ck.penalty, chunks: ck.chunks.map((c) => c.text) })),
+          })
+        : { order: a.chunkings.map((_, i) => i), unnatural: [], rationale: "single candidate; no model call", source: "none" };
+  }
+
+  const settled = attempts.map((a) => {
+    if (a.ineligible) return a;
+    const { melody, chunkings, melodyCheck, verdictOnChunkings: v } = a;
+    const rank = new Map(v.order.map((idx, r) => [idx, r]));
+    const unnatural = new Set(v.unnatural || []);
     let bestSetting = null;
+    let bestIdx = -1;
     let firstInfeasible = null;
-    for (const ck of chunkings) {
-      const setting = setPassage(melody, ck.chunks, bestAlignment);
-      if (setting.infeasible) { firstInfeasible = firstInfeasible || setting; continue; }
-      setting.chunking = ck;
-      setting.chunks.forEach((c, i) => (c.text = ck.chunks[i].text));
-      if (!bestSetting || compareTotals(setting.totals, bestSetting.totals) < 0 ||
-          (compareTotals(setting.totals, bestSetting.totals) === 0 && (ck.penalty ?? 0) < (bestSetting.chunking.penalty ?? 0))) {
-        bestSetting = setting;
-      }
-    }
+    const consider = (allowUnnatural) => {
+      chunkings.forEach((ck, idx) => {
+        if (!allowUnnatural && unnatural.has(idx)) return;
+        const setting = setPassage(melody, ck.chunks, bestAlignment);
+        if (setting.infeasible) { firstInfeasible = firstInfeasible || setting; return; }
+        setting.chunking = { ...ck, index: idx, modelRank: rank.get(idx) + 1, modelUnnatural: unnatural.has(idx) };
+        setting.chunks.forEach((c, i) => (c.text = ck.chunks[i].text));
+        const cmp = bestSetting ? compareTotals(setting.totals, bestSetting.totals) : -1;
+        if (cmp < 0 || (cmp === 0 && rank.get(idx) < rank.get(bestIdx))) { bestSetting = setting; bestIdx = idx; }
+      });
+    };
+    consider(false);
+    if (!bestSetting) consider(true); // nothing natural fits: fall back, flagged
     if (!bestSetting) return firstInfeasible;
+    bestSetting.chunkingVerdict = { order: v.order, unnatural: v.unnatural, rationale: v.rationale, source: v.source };
     // A setting that parked its tone changes on repeated notes dodged the test.
     const settingCheck = settingEligibility(bestSetting.totals);
     bestSetting.eligibility = { melody: melodyCheck, setting: settingCheck };
@@ -191,7 +221,7 @@ async function search({ passage, melodies, toneModule, baselineMelodyId, model, 
     return bestSetting;
   });
 
-  const improvements = attempts
+  const improvements = settled
     .filter((a) => !a.infeasible && !a.ineligible && compareTotals(a.totals, baseline.totals) < 0)
     .sort((a, b) => compareTotals(a.totals, b.totals) || a.melodyId.localeCompare(b.melodyId))
     .map((a) => {
@@ -201,10 +231,10 @@ async function search({ passage, melodies, toneModule, baselineMelodyId, model, 
       return { ...a, kind, prior: a.totals };
     });
 
-  const base = { passage, language: toneModule.id, chunking, baseline, attempts };
+  const base = { passage, language: toneModule.id, chunking, baseline, attempts: settled, model: model.source };
 
   if (improvements.length === 0) {
-    const failure = await model.explainFailure({ passage, baseline, attempts });
+    const failure = await model.explainFailure({ passage, baseline, attempts: settled });
     return { ...base, results: [], failure };
   }
 
@@ -254,7 +284,7 @@ async function searchTranslations({ passages, baselineVersionId, ...rest }) {
     .sort((a, b) => compareTotals(a.totals, b.totals) || a.versionId.localeCompare(b.versionId) || a.melodyId.localeCompare(b.melodyId));
 
   const { model, melodies } = rest;
-  const base = { passages, versions: passages.map((p) => p.version), language: rest.toneModule.id, chunking: baseRun.out.chunking, baseline, attempts, runs };
+  const base = { passages, versions: passages.map((p) => p.version), language: rest.toneModule.id, chunking: baseRun.out.chunking, baseline, attempts, runs, model: model.source };
   if (improvements.length === 0) {
     const failure = await model.explainFailure({ passage: baselinePassage, baseline, attempts });
     return { ...base, results: [], failure };

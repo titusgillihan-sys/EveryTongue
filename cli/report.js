@@ -15,7 +15,7 @@
  */
 const path = require("node:path");
 const { FixtureScriptureProvider } = require("../providers/scripture.js");
-const { StubModelProvider, cached } = require("../providers/model.js");
+const { selectModelProvider } = require("../providers/index.js");
 const { loadMelodies, noteName } = require("../melodies.js");
 const { forLanguage } = require("../tone/index.js");
 const { describeAlignment } = require("../align.js");
@@ -23,7 +23,7 @@ const { search, searchTranslations } = require("../search.js");
 
 function parseArgs(argv) {
   const args = { passage: "psalm-23-vi1925", melody: "new-britain", json: false, list: false, chunks: null,
-    versions: null, includeSynthetic: false, language: "vi" };
+    versions: null, includeSynthetic: false, language: "vi", model: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--passage") args.passage = argv[++i];
@@ -33,6 +33,7 @@ function parseArgs(argv) {
     else if (a === "--versions") args.versions = argv[++i]; // all | comma-separated version ids
     else if (a === "--include-synthetic") args.includeSynthetic = true;
     else if (a === "--language") args.language = argv[++i]; // when --passage is a key shared across languages
+    else if (a === "--model") args.model = argv[++i]; // stub (default, offline) | gloo (needs GLOO_API_KEY)
     else if (a === "--list") args.list = true;
     else if (a === "--help" || a === "-h") args.help = true;
     else throw new Error(`Unknown argument ${a}`);
@@ -80,8 +81,12 @@ function settingBlock(title, setting) {
   lines.push(`  ${fmtTotals(setting.totals)}`);
   const ck = setting.chunking;
   if (ck) {
-    const pen = ck.penalty === null || ck.penalty === undefined ? "" : `, break penalty ${ck.penalty}`;
-    lines.push(`  chunking: ${ck.source} (${setting.chunks.length} chunks${pen})`);
+    const pen = ck.penalty === null || ck.penalty === undefined ? "" : `, break penalty ${ck.penalty} (deterministic prior)`;
+    const rank = ck.modelRank ? `; model rank ${ck.modelRank}${ck.modelUnnatural ? ", FLAGGED unnatural, used because nothing else fits" : ""}` : "";
+    lines.push(`  chunking: ${ck.source} (${setting.chunks.length} chunks${pen}${rank})`);
+    if (setting.chunkingVerdict && setting.chunkingVerdict.source !== "none") {
+      lines.push(`  chunking verdict (${setting.chunkingVerdict.source}): ${setting.chunkingVerdict.rationale}`);
+    }
   }
   for (const chunk of setting.chunks) {
     const syl = chunk.rows;
@@ -94,7 +99,7 @@ function render(out, melodies) {
   const { baseline, results, attempts, failure } = out;
   const passages = out.passages || [out.passage];
   const L = [];
-  L.push("EVERY TONGUE — setting report (offline: fixture Scripture, stub model)");
+  L.push(`EVERY TONGUE — setting report (fixture Scripture; model provider: ${out.model || "stub"})`);
   L.push("=".repeat(72));
   L.push(`Passage:  ${passages[0].reference}`);
   L.push(`Versions: ${passages.length} (the translation lever searches every version listed)`);
@@ -127,7 +132,7 @@ function render(out, melodies) {
     const mv = best.eligibility.melody.movement;
     L.push(`  eligibility: melody moves on ${mv.moving}/${mv.pairs} steps over ${mv.rangeSemitones} semitones; ` +
       `melody engages ${best.eligibility.setting.constrainedFraction.toFixed(2)} of voice-moving transitions (floors in data/scoring-thresholds.json, unverified)`);
-    L.push(`  deterministic prior: severity ${best.prior.severity}; model verdict (${best.verdict.source}): suitability ${best.verdict.suitability.toFixed(2)}`);
+    L.push(`  deterministic prior: ${best.prior.conflicts}/${best.prior.constrained} constrained, severity ${best.prior.severity}; model verdict (${best.verdict.source}): suitability ${best.verdict.suitability.toFixed(2)}`);
     L.push(`  model rationale: ${best.verdict.rationale}`);
     if (!bestMelody.verified) L.push(`  melody UNVERIFIED (${bestMelody.confidence}): ${bestMelody.confidenceNote}`);
     L.push("");
@@ -179,7 +184,7 @@ async function main() {
   if (!meta) throw new Error(`Unknown passage "${args.passage}" (try --list)`);
   const baselineVersion = scripture.version(meta.versionId);
   const toneModule = forLanguage(baselineVersion.language);
-  const model = cached(new StubModelProvider());
+  const model = selectModelProvider({ choice: args.model });
 
   // Which versions to search: the passage's own, or every version that has it.
   let versionIds = [meta.versionId];

@@ -18,7 +18,7 @@ const { render } = require("../cli/report.js");
 
 const MARKER = "«MODEL-GENERATED-7f3a»";
 const TEXT_KEYS = new Set(["text", "syllables", "chunks", "reference", "name", "copyright"]);
-const MODEL_KEYS = new Set(["rationale", "explanation", "verdict", "failure"]);
+const MODEL_KEYS = new Set(["rationale", "explanation", "verdict", "failure", "chunkingVerdict", "verdictOnChunkings"]);
 
 /** Walk an object; collect every string under a text-ish key, skipping model-output subtrees. */
 function textStrings(node, key, out) {
@@ -58,7 +58,7 @@ test("model output never reaches a Scripture text field or a Scripture line of t
       // Rendered report: the marker appears only on the lines labelled as model output.
       const lines = render(out, melodies).split("\n");
       for (const line of lines) {
-        if (/^\s*(model rationale:|Explanation \()/.test(line)) continue;
+        if (/^\s*(model rationale:|Explanation \(|chunking verdict \()/.test(line)) continue;
         assert.ok(!line.includes(MARKER), `marker leaked into a report line: ${line}`);
       }
     }
@@ -73,7 +73,7 @@ test("model output never reaches a Scripture text field or a Scripture line of t
   for (const s of textStrings(out, null, [])) assert.ok(!s.includes(MARKER), `marker leaked (lever): ${s}`);
   const lines = render(out, melodies).split("\n");
   for (const line of lines) {
-    if (/^\s*(model rationale:|Explanation \()/.test(line)) continue;
+    if (/^\s*(model rationale:|Explanation \(|chunking verdict \()/.test(line)) continue;
     assert.ok(!line.includes(MARKER), `marker leaked into a lever report line: ${line}`);
   }
 });

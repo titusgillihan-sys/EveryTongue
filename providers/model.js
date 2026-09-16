@@ -5,8 +5,9 @@
  * ModelProvider interface (all async, all return plain objects):
  *   judgeMelodySuitability({ passage, melody, prior, chunkCount }) -> { suitability: 0..1, rationale, source }
  *   explainFailure({ passage, baseline, attempts })     -> { explanation, source }
- *   rankChunkings({ candidates })                      -> { order: [indices], rationale, source }
- *                                                        (unused until the chunker exists)
+ *   rankChunkings({ passage, melody, candidates })     -> { order: [indices], unnatural: [indices], rationale, source }
+ *       candidates are the chunker's top-N segmentations; the model says
+ *       which breaks sound natural to a native speaker
  *
  * Two implementations are planned: StubModelProvider (this file, deterministic,
  * zero network, no credentials) and Gloo AI Studio once credentials land.
@@ -82,7 +83,8 @@ class StubModelProvider {
   async rankChunkings({ candidates }) {
     return {
       order: candidates.map((_, i) => i),
-      rationale: this._s("Stub: deterministic order kept."),
+      unnatural: [],
+      rationale: this._s(`Stub verdict (no model credentials): the chunker's penalty order is kept for ${candidates.length} candidate segmentation(s). A live model would say which breaks sound natural to a native speaker.`),
       source: this.source,
     };
   }
